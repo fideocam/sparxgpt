@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>EaGpt.AddIn</RootNamespace>
+    <AssemblyName>EaGpt.AddIn</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <ComVisible>true</ComVisible>
+    <AssemblyTitle>EaGPT</AssemblyTitle>
+    <Product>EaGPT</Product>
+    <Description>ArchiGPT-style Ollama chat add-in for Sparx Enterprise Architect</Description>
+    <Version>1.0.0</Version>
+    <Deterministic>true</Deterministic>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EaGpt.Core\EaGpt.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
