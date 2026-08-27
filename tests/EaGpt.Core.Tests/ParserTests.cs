@@ -114,5 +114,40 @@ namespace EaGpt.Tests
             Assert.Equal("I do not understand", result.Error);
             Assert.False(result.HasMutations);
         }
+
+        [Fact]
+        public void Parse_EmptyOrNull_ReturnsEmptyResult()
+        {
+            Assert.Empty(ArchiMateLlmResultParser.Parse(null).Elements);
+            Assert.Empty(ArchiMateLlmResultParser.Parse("").Elements);
+            Assert.Empty(ArchiMateLlmResultParser.Parse("just plain text").Elements);
+        }
+
+        [Fact]
+        public void Parse_RelationshipWithoutNameOrId()
+        {
+            const string json = @"{""elements"":[{""type"":""BusinessActor"",""name"":""A"",""id"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""}],""relationships"":[{""type"":""ServingRelationship"",""source"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"",""target"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""}]}";
+            var result = ArchiMateLlmResultParser.Parse(json);
+            Assert.Single(result.Relationships);
+            Assert.Null(result.Relationships[0].Id);
+            Assert.Equal("", result.Relationships[0].Name);
+        }
+
+        [Fact]
+        public void Parse_DoesNotTreatDiagramWordInNameAsDiagramObject()
+        {
+            const string json = @"{""elements"":[{""type"":""BusinessActor"",""name"":""Some diagram"",""id"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""}],""relationships"":[]}";
+            var result = ArchiMateLlmResultParser.Parse(json);
+            Assert.Null(result.Diagram);
+            Assert.Equal("Some diagram", result.Elements[0].Name);
+        }
+
+        [Fact]
+        public void Parse_EscapedNewlineInName()
+        {
+            const string json = @"{""elements"":[{""type"":""BusinessActor"",""name"":""Line1\nLine2"",""id"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""}],""relationships"":[]}";
+            var result = ArchiMateLlmResultParser.Parse(json);
+            Assert.Contains("\n", result.Elements[0].Name);
+        }
     }
 }

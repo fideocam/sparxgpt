@@ -292,7 +292,7 @@ namespace EaGpt.AddIn
                         BeginInvoke(new Action(() => AppendResponse(text)));
                     }
 
-                    BeginInvoke(new Action(() => ApplyIfChanges(repo, reply.ToString())));
+                    BeginInvoke(new Action(() => ApplyIfChanges(repo, reply.ToString(), prompt)));
                 }
                 catch (OperationCanceledException)
                 {
@@ -309,7 +309,7 @@ namespace EaGpt.AddIn
             }, token);
         }
 
-        private void ApplyIfChanges(ComObj repo, string reply)
+        private void ApplyIfChanges(ComObj repo, string reply, string prompt)
         {
             AppendResponse(Environment.NewLine + Environment.NewLine);
             if (!ArchiMateLlmResultParser.LooksLikeChangesJson(reply))
@@ -330,6 +330,12 @@ namespace EaGpt.AddIn
             {
                 AppendResponse("Validation errors:" + Environment.NewLine + string.Join(Environment.NewLine, errors) + Environment.NewLine);
                 return;
+            }
+
+            ComObj? currentDiagram = EaModelReader.CurrentDiagram(repo);
+            if (DiagramCreationIntent.TryDropUnwantedDiagram(parsed, prompt, currentDiagram != null))
+            {
+                AppendResponse("The reply included a new diagram block; it was ignored because a diagram was open and you did not ask for a new view — shapes were added to the open view." + Environment.NewLine);
             }
 
             if (MutationPolicy.IsDestructive(parsed))
@@ -354,7 +360,7 @@ namespace EaGpt.AddIn
                     repo,
                     parsed,
                     EaModelReader.TargetPackage(repo),
-                    EaModelReader.CurrentDiagram(repo));
+                    currentDiagram);
                 AppendResponse(report.Summarize() + Environment.NewLine);
             }
             catch (Exception ex)

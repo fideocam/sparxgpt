@@ -34,13 +34,19 @@ namespace EaGpt
                 "TechnologyCollaboration", "TechnologyEvent", "TechnologyFunction", "TechnologyInteraction",
                 "TechnologyInterface", "TechnologyProcess", "TechnologyService",
                 "Value", "ValueStream", "WorkPackage");
+            // Unqualified names and ArchiMate 2 mix-ups (same map as ArchiGPT 919aa88).
             Alias(el, "Actor", "BusinessActor");
             Alias(el, "Person", "BusinessActor");
             Alias(el, "Organisation", "BusinessActor");
             Alias(el, "Organization", "BusinessActor");
+            Alias(el, "OrganizationalUnit", "BusinessActor");
+            Alias(el, "OrganisationalUnit", "BusinessActor");
+            Alias(el, "Department", "BusinessActor");
             Alias(el, "Role", "BusinessRole");
             Alias(el, "Process", "BusinessProcess");
             Alias(el, "Activity", "BusinessProcess");
+            Alias(el, "BusinessActivity", "BusinessProcess");
+            Alias(el, "UseCase", "BusinessProcess");
             Alias(el, "Function", "BusinessFunction");
             Alias(el, "Service", "BusinessService");
             Alias(el, "Event", "BusinessEvent");
@@ -50,18 +56,30 @@ namespace EaGpt
             Alias(el, "Component", "ApplicationComponent");
             Alias(el, "Application", "ApplicationComponent");
             Alias(el, "Module", "ApplicationComponent");
+            Alias(el, "Microservice", "ApplicationComponent");
             Alias(el, "Interface", "ApplicationInterface");
             Alias(el, "API", "ApplicationInterface");
             Alias(el, "Data", "DataObject");
             Alias(el, "Entity", "DataObject");
+            Alias(el, "DataEntity", "DataObject");
+            Alias(el, "Database", "DataObject");
             Alias(el, "Software", "SystemSoftware");
+            Alias(el, "OperatingSystem", "SystemSoftware");
+            Alias(el, "OS", "SystemSoftware");
             Alias(el, "Server", "Node");
             Alias(el, "Host", "Node");
+            Alias(el, "VM", "Node");
             Alias(el, "TechnologyNode", "Node");
             Alias(el, "InfrastructureNode", "Node");
             Alias(el, "Network", "CommunicationNetwork");
+            Alias(el, "CommunicationPath", "Path");
             Alias(el, "InfrastructureService", "TechnologyService");
             Alias(el, "InfrastructureFunction", "TechnologyFunction");
+            Alias(el, "InfrastructureInterface", "TechnologyInterface");
+            Alias(el, "InfrastructureProcess", "TechnologyProcess");
+            Alias(el, "InfrastructureEvent", "TechnologyEvent");
+            Alias(el, "InfrastructureInteraction", "TechnologyInteraction");
+            Alias(el, "InfrastructureCollaboration", "TechnologyCollaboration");
             Alias(el, "AndJunction", "Junction");
             Alias(el, "OrJunction", "Junction");
             ElementAliases = new ReadOnlyDictionary<string, string>(el);
@@ -73,21 +91,56 @@ namespace EaGpt
                 "AssociationRelationship", "CompositionRelationship", "FlowRelationship",
                 "InfluenceRelationship", "RealizationRelationship", "ServingRelationship",
                 "SpecializationRelationship", "TriggeringRelationship");
+            Alias(rel, "InteractionRelationship", "AssociationRelationship");
+            Alias(rel, "InteractsWithRelationship", "AssociationRelationship");
+            Alias(rel, "CollaborationRelationship", "AssociationRelationship");
+            Alias(rel, "CommunicationRelationship", "AssociationRelationship");
+            Alias(rel, "CommunicatesWithRelationship", "AssociationRelationship");
+            Alias(rel, "ConnectionRelationship", "AssociationRelationship");
+            Alias(rel, "DependencyRelationship", "AssociationRelationship");
+            Alias(rel, "DependsOnRelationship", "AssociationRelationship");
+            Alias(rel, "AssociatedWithRelationship", "AssociationRelationship");
+            Alias(rel, "RelatedToRelationship", "AssociationRelationship");
+            Alias(rel, "RelatesToRelationship", "AssociationRelationship");
+            Alias(rel, "LinkedToRelationship", "AssociationRelationship");
+            Alias(rel, "LinksToRelationship", "AssociationRelationship");
+            Alias(rel, "LinkRelationship", "AssociationRelationship");
+            Alias(rel, "ConnectsToRelationship", "AssociationRelationship");
             Alias(rel, "UsedByRelationship", "ServingRelationship");
             Alias(rel, "UsesRelationship", "ServingRelationship");
             Alias(rel, "UseRelationship", "ServingRelationship");
             Alias(rel, "ServesRelationship", "ServingRelationship");
+            Alias(rel, "SupportsRelationship", "ServingRelationship");
+            Alias(rel, "CallsRelationship", "ServingRelationship");
             Alias(rel, "AccessesRelationship", "AccessRelationship");
+            Alias(rel, "ReadsRelationship", "AccessRelationship");
+            Alias(rel, "WritesRelationship", "AccessRelationship");
             Alias(rel, "AssignedToRelationship", "AssignmentRelationship");
+            Alias(rel, "AssignedRelationship", "AssignmentRelationship");
             Alias(rel, "RealizesRelationship", "RealizationRelationship");
             Alias(rel, "RealisationRelationship", "RealizationRelationship");
+            Alias(rel, "ImplementsRelationship", "RealizationRelationship");
+            Alias(rel, "ImplementationRelationship", "RealizationRelationship");
+            Alias(rel, "FulfillsRelationship", "RealizationRelationship");
+            Alias(rel, "FulfilsRelationship", "RealizationRelationship");
             Alias(rel, "TriggersRelationship", "TriggeringRelationship");
+            Alias(rel, "TriggerRelationship", "TriggeringRelationship");
             Alias(rel, "FlowsToRelationship", "FlowRelationship");
+            Alias(rel, "FlowsRelationship", "FlowRelationship");
+            Alias(rel, "SendsRelationship", "FlowRelationship");
             Alias(rel, "InfluencesRelationship", "InfluenceRelationship");
             Alias(rel, "ContainsRelationship", "CompositionRelationship");
+            Alias(rel, "ComposedOfRelationship", "CompositionRelationship");
+            Alias(rel, "IncludesRelationship", "CompositionRelationship");
+            Alias(rel, "HasRelationship", "CompositionRelationship");
+            Alias(rel, "AggregatesRelationship", "AggregationRelationship");
             Alias(rel, "SpecialisationRelationship", "SpecializationRelationship");
-            Alias(rel, "InteractionRelationship", "AssociationRelationship");
-            Alias(rel, "DependencyRelationship", "AssociationRelationship");
+            Alias(rel, "InheritsRelationship", "SpecializationRelationship");
+            Alias(rel, "InheritanceRelationship", "SpecializationRelationship");
+            Alias(rel, "IsARelationship", "SpecializationRelationship");
+            Alias(rel, "ExtendsRelationship", "SpecializationRelationship");
+            Alias(rel, "GeneralizationRelationship", "SpecializationRelationship");
+            Alias(rel, "GeneralisationRelationship", "SpecializationRelationship");
             RelationshipAliases = new ReadOnlyDictionary<string, string>(rel);
             RelationshipTypes = new HashSet<string>(rel.Values, StringComparer.Ordinal);
         }
@@ -102,7 +155,7 @@ namespace EaGpt
                 return type ?? "";
             }
 
-            string t = type!.Trim().Replace(" ", "");
+            string t = StripWhitespace(type!);
             if (ElementAliases.TryGetValue(t, out string? aliased) && aliased != null)
             {
                 return aliased;
@@ -118,7 +171,7 @@ namespace EaGpt
                 return type ?? "";
             }
 
-            string t = type!.Trim().Replace(" ", "");
+            string t = StripWhitespace(type!);
             if (!t.EndsWith("Relationship", StringComparison.OrdinalIgnoreCase) &&
                 !t.Equals("Junction", StringComparison.OrdinalIgnoreCase))
             {
@@ -202,7 +255,21 @@ namespace EaGpt
 
         private static void Alias(Dictionary<string, string> map, string from, string to)
         {
-            map[from.Replace(" ", "").ToLowerInvariant()] = to;
+            map[StripWhitespace(from).ToLowerInvariant()] = to;
+        }
+
+        private static string StripWhitespace(string type)
+        {
+            var sb = new System.Text.StringBuilder(type.Length);
+            foreach (char c in type.Trim())
+            {
+                if (!char.IsWhiteSpace(c))
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString();
         }
     }
 }
