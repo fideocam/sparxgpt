@@ -110,7 +110,76 @@ namespace EaGpt
             return "EaGPT wants to delete " +
                    result.RemoveElementIds.Count + " element(s), " +
                    result.RemoveRelationshipIds.Count + " relationship(s), and " +
-                   result.RemoveDiagramNames.Count + " diagram(s) from the model. Continue?";
+                   result.RemoveDiagramNames.Count + " diagram(s) from the model.\n\n" +
+                   PreviewSummary(result) + "\n\nContinue?";
+        }
+
+        /// <summary>
+        /// Human-readable preview of a mutation (MCP-style gated apply).
+        /// </summary>
+        public static string PreviewSummary(ArchiMateLlmResult result)
+        {
+            var parts = new List<string>();
+            if (result.Elements.Count > 0)
+            {
+                parts.Add("add " + result.Elements.Count + " element(s)" + SampleNames(result));
+            }
+
+            if (result.Relationships.Count > 0)
+            {
+                parts.Add("add " + result.Relationships.Count + " relationship(s)");
+            }
+
+            if (result.Diagram != null && !string.IsNullOrWhiteSpace(result.Diagram.Name))
+            {
+                parts.Add("create diagram \"" + result.Diagram.Name + "\" (" + result.Diagram.Nodes.Count + " node(s))");
+            }
+
+            int diagramRemovals = result.RemoveElementFromDiagramIds.Count + result.RemoveRelationshipFromDiagramIds.Count;
+            if (diagramRemovals > 0)
+            {
+                parts.Add("remove " + diagramRemovals + " figure(s) from the open diagram");
+            }
+
+            if (result.RemoveElementIds.Count > 0)
+            {
+                parts.Add("delete " + result.RemoveElementIds.Count + " element(s) from the model");
+            }
+
+            if (result.RemoveRelationshipIds.Count > 0)
+            {
+                parts.Add("delete " + result.RemoveRelationshipIds.Count + " relationship(s) from the model");
+            }
+
+            if (result.RemoveDiagramNames.Count > 0)
+            {
+                parts.Add("delete " + result.RemoveDiagramNames.Count + " diagram(s)");
+            }
+
+            if (parts.Count == 0)
+            {
+                return "Preview: no model changes.";
+            }
+
+            return "Preview: " + string.Join("; ", parts) + ".";
+        }
+
+        private static string SampleNames(ArchiMateLlmResult result)
+        {
+            var names = new List<string>();
+            foreach (var e in result.Elements)
+            {
+                if (names.Count >= 5)
+                {
+                    names.Add("…");
+                    break;
+                }
+
+                string label = (e.Type ?? "?") + " \"" + (e.Name ?? "") + "\"";
+                names.Add(label);
+            }
+
+            return names.Count == 0 ? "" : " [" + string.Join(", ", names) + "]";
         }
     }
 }

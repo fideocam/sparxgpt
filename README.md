@@ -8,13 +8,15 @@ Similar commercial/official EA products already exist (OneRAI, Sparx Japan MCP, 
 
 ## What you can do
 
-- Ask for analysis of the model, a diagram, or a selected element
-- Add ArchiMate elements and relationships
-- Create a new diagram with layout
+- Ask for analysis of the model, a diagram, or a selected element (including a deterministic **impact** walk and a compact **Mermaid** neighborhood of the selection)
+- Add ArchiMate elements and relationships (illegal relationship types are rejected with suggestions)
+- Create a new diagram; collapsed LLM coordinates are spread by ArchiMate layer
 - Remove from the current diagram only, or from the model
 - Remove a diagram (elements stay in the model)
 
 Default Ollama endpoint: `http://localhost:11434`, model `llama3.2`. To use Ollama on **another machine on the LAN**, type its address in the EaGPT window (for example `http://192.168.1.10:11434` or `192.168.1.10`). That host must listen on the network (`OLLAMA_HOST=0.0.0.0`).
+
+Ideas taken from public ArchiMate MCP / AI projects (query tools, legality, viewpoint recipes, Mermaid, audit log) are listed in [docs/ARCHIMATE_AI_LANDSCAPE.md](docs/ARCHIMATE_AI_LANDSCAPE.md). EaGPT remains an in-EA Ollama pane, not an MCP server.
 
 ## Build and install
 
@@ -38,11 +40,12 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `src/EaGpt.AddIn` — .NET Framework 4.8 COM add-in, WinForms chat, EA Automation importer
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
 - `knowledge/` — template pack (principles, CMDB extract, ArchiMate examples, tiedonhallintamalli)
+- `docs/` — install, security, RAG, and [ArchiMate AI landscape](docs/ARCHIMATE_AI_LANDSCAPE.md)
 - `scripts/install.ps1` / `uninstall.ps1`
 
 ## Tests
 
-Core protocol tests (parser, validator, Ollama URL policy, settings, JSON escaping) run on Linux:
+Core protocol tests (parser, validator, relationship legality, impact/Mermaid context, Ollama URL policy, settings, JSON escaping) run on Linux:
 
 ```bash
 dotnet test tests/EaGpt.Core.Tests/EaGpt.Core.Tests.csproj

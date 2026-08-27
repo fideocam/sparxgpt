@@ -17,7 +17,7 @@ Keep each file **short, factual, and named by topic**. Prefer Markdown. Do not d
 | --- | --- | --- |
 | **Architecture principles** | `principles/naming.md`, `principles/integration.md`, `principles/security.md` | Naming, reuse, “no direct DB access”, cloud vs on-prem, who owns a capability |
 | **CMDB** | `cmdb/applications.md` or small CSVs of **name, type, owner, environment** | Existing applications, servers, and relations so new diagrams **reuse names** instead of inventing duplicates |
-| **Example ArchiMate** | `examples/business-layer.md`, `examples/application-layer.md`, `examples/technology-deployment.md`, `examples/motivation.md` | Required viewpoints, typical element sets, “a deployment view uses Node, Device, CommunicationNetwork, Assignment/Serving” |
+| **Example ArchiMate** | `examples/business-layer.md`, `examples/application-layer.md`, `examples/technology-deployment.md`, `examples/motivation.md`, `examples/implementation-migration.md` | Required viewpoints, typical element sets, “a deployment view uses Node, Device, CommunicationNetwork, Assignment/Serving” |
 | **Tiedonhallintamalli** | `tiedonhallintamalli/tietovarannot.md`, `kasittelytarkoitukset.md`, `vastuut.md`, `rajapinnat.md` | Finnish information-management model: data stores, purposes of processing, owners, systems, interfaces — so generated views match how the organisation documents information (tiedonhallintalaki-style structure, not a legal opinion) |
 
 **CMDB rule:** export a **curated extract** (applications + technical services + owners), not every CI. Refresh the extract on a schedule.

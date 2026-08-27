@@ -43,9 +43,11 @@ Localhost and RFC1918 Ollama URLs remain allowed, matching ArchiGPT.
 - Replies larger than 200,000 characters are not treated as changes.
 - `"elements"` in prose does not count as a change payload; the parser looks for `"elements": [` (and the other mutation keys).
 - Element and relationship types must be ArchiMate 3 names (or known aliases). Unknown types never become EA stereotypes.
+- Relationships are checked with ArchiMate 3.2-inspired aspect/layer rules before apply. Illegal pairs are rejected and suggested legal types are shown. This is not the full official matrix.
 - Batch caps: 80 elements, 120 relationships, 50 removals, 256-character names, 80-character ids, diagram coordinates 0–4000.
-- **Deletes from the model** (elements, relationships, whole diagrams) require an explicit Yes/No confirmation (default No).
+- **Deletes from the model** (elements, relationships, whole diagrams) require an explicit Yes/No confirmation (default No). The confirmation and the chat both show a mutation preview.
 - Remove-from-diagram-only is not treated as destructive (same as ArchiGPT).
+- Applied (and rejected) mutations append a short line to `%AppData%\EaGpt\audit.ndjson` (counts and a truncated prompt, not the model dump).
 
 ### XML digest sent to the model
 

@@ -246,10 +246,12 @@ namespace EaGpt.AddIn
 
             string selection;
             string xml;
+            ModelSnapshot snapshot;
             try
             {
                 selection = EaModelReader.SelectionContext(repo);
-                xml = ModelDigestBuilder.ToXml(EaModelReader.Read(repo));
+                snapshot = EaModelReader.Read(repo);
+                xml = ModelDigestBuilder.ToXml(snapshot);
             }
             catch (Exception ex)
             {
@@ -259,7 +261,8 @@ namespace EaGpt.AddIn
             }
 
             string knowledge = KnowledgeRetriever.Retrieve(_settings.KnowledgeFolder, prompt, _settings.KnowledgeMaxChars);
-            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge);
+            string analysis = ModelAnalysisContext.Build(snapshot, selection, prompt);
+            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge, analysis);
             string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
             _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
                              "Ollama: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
@@ -296,7 +299,7 @@ namespace EaGpt.AddIn
                         BeginInvoke(new Action(() => AppendResponse(text)));
                     }
 
-                    BeginInvoke(new Action(() => ApplyIfChanges(repo, reply.ToString(), prompt)));
+                    BeginInvoke(new Action(() => ApplyIfChanges(repo, snapshot, reply.ToString(), prompt)));
                 }
                 catch (OperationCanceledException)
                 {
@@ -313,7 +316,7 @@ namespace EaGpt.AddIn
             }, token);
         }
 
-        private void ApplyIfChanges(ComObj repo, string reply, string prompt)
+        private void ApplyIfChanges(ComObj repo, ModelSnapshot snapshot, string reply, string prompt)
         {
             AppendResponse(Environment.NewLine + Environment.NewLine);
             if (!ArchiMateLlmResultParser.LooksLikeChangesJson(reply))
@@ -330,9 +333,11 @@ namespace EaGpt.AddIn
 
             var errors = ArchiMateSchemaValidator.Validate(parsed);
             errors.AddRange(MutationPolicy.CheckLimits(parsed));
+            errors.AddRange(RelationshipLegality.Validate(parsed, snapshot));
             if (errors.Count > 0)
             {
                 AppendResponse("Validation errors:" + Environment.NewLine + string.Join(Environment.NewLine, errors) + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: false);
                 return;
             }
 
@@ -341,6 +346,9 @@ namespace EaGpt.AddIn
             {
                 AppendResponse("The reply included a new diagram block; it was ignored because a diagram was open and you did not ask for a new view — shapes were added to the open view." + Environment.NewLine);
             }
+
+            DiagramLayout.Prepare(parsed, snapshot);
+            AppendResponse(MutationPolicy.PreviewSummary(parsed) + Environment.NewLine);
 
             if (MutationPolicy.IsDestructive(parsed))
             {
@@ -354,6 +362,7 @@ namespace EaGpt.AddIn
                 if (confirm != DialogResult.Yes)
                 {
                     AppendResponse("Destructive changes were not applied." + Environment.NewLine);
+                    AuditLog.TryAppend(null, parsed, prompt, applied: false);
                     return;
                 }
             }
@@ -366,10 +375,12 @@ namespace EaGpt.AddIn
                     EaModelReader.TargetPackage(repo),
                     currentDiagram);
                 AppendResponse(report.Summarize() + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: true);
             }
             catch (Exception ex)
             {
                 AppendResponse("Could not apply changes in EA: " + ex.Message + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: false);
             }
         }
 

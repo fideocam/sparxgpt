@@ -19,3 +19,5 @@ Evaluated before writing EaGPT. ArchiGPT is an in-Archi chat pane that talks to 
 None of the EA options is an open-source ArchiGPT clone: **in-EA pane + Ollama-first + structured ArchiMate mutations + MIT**.
 
 EaGPT fills that gap. It is a Windows COM add-in, not an MCP server (Sparx Japan already ships a free MCP add-in).
+
+Open-source **Archi** MCP servers (fanievh, JesseLeresche, thijs-hakkenberg, byrondelgado) are the right place to steal *capabilities* from — relationship legality, impact walks, viewpoint recipes, Mermaid neighborhoods, audit logs — without becoming another MCP product. See [ARCHIMATE_AI_LANDSCAPE.md](ARCHIMATE_AI_LANDSCAPE.md).
