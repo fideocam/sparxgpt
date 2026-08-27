@@ -4,7 +4,7 @@ namespace EaGpt
 {
     public static class UserMessageBuilder
     {
-        public static string BuildUserMessage(string? selectionContext, string? modelXml, string? prompt)
+        public static string BuildUserMessage(string? selectionContext, string? modelXml, string? prompt, string? knowledge = null)
         {
             var sb = new StringBuilder();
             if (!string.IsNullOrEmpty(modelXml))
@@ -13,6 +13,11 @@ namespace EaGpt
             }
 
             sb.Append("--- END OF MODEL ---\n\n");
+            if (!string.IsNullOrWhiteSpace(knowledge))
+            {
+                sb.Append(knowledge!.Trim()).Append("\n\n");
+            }
+
             sb.Append("User request: ").Append(prompt ?? "").Append("\n\n");
             if (!string.IsNullOrEmpty(selectionContext))
             {

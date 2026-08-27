@@ -8,6 +8,8 @@ namespace EaGpt
         public string OllamaBaseUrl { get; set; } = OllamaClient.DefaultBaseUrl;
         public string Model { get; set; } = OllamaClient.DefaultModel;
         public int TimeoutMs { get; set; } = 180000;
+        public string KnowledgeFolder { get; set; } = KnowledgeRetriever.DefaultFolder();
+        public int KnowledgeMaxChars { get; set; } = KnowledgeRetriever.DefaultMaxChars;
 
         public static string DefaultPath()
         {
@@ -51,6 +53,14 @@ namespace EaGpt
                 {
                     settings.TimeoutMs = OllamaClient.ClampTimeout(ms);
                 }
+                else if (key.Equals("KnowledgeFolder", StringComparison.OrdinalIgnoreCase) && value.Length > 0)
+                {
+                    settings.KnowledgeFolder = value;
+                }
+                else if (key.Equals("KnowledgeMaxChars", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int kc))
+                {
+                    settings.KnowledgeMaxChars = kc;
+                }
             }
 
             return settings;
@@ -61,6 +71,20 @@ namespace EaGpt
             OllamaBaseUrl = OllamaEndpoint.NormalizeOrDefault(OllamaBaseUrl);
             Model = OllamaClient.SanitizeModelName(Model);
             TimeoutMs = OllamaClient.ClampTimeout(TimeoutMs);
+            if (string.IsNullOrWhiteSpace(KnowledgeFolder))
+            {
+                KnowledgeFolder = KnowledgeRetriever.DefaultFolder();
+            }
+
+            if (KnowledgeMaxChars < 500)
+            {
+                KnowledgeMaxChars = 500;
+            }
+
+            if (KnowledgeMaxChars > 40_000)
+            {
+                KnowledgeMaxChars = 40_000;
+            }
             string file = path ?? DefaultPath();
             string dir = Path.GetDirectoryName(file) ?? "";
             if (dir.Length > 0)
@@ -71,7 +95,9 @@ namespace EaGpt
             File.WriteAllText(file,
                 "OllamaBaseUrl=" + OllamaBaseUrl + Environment.NewLine +
                 "Model=" + Model + Environment.NewLine +
-                "TimeoutMs=" + TimeoutMs + Environment.NewLine);
+                "TimeoutMs=" + TimeoutMs + Environment.NewLine +
+                "KnowledgeFolder=" + KnowledgeFolder + Environment.NewLine +
+                "KnowledgeMaxChars=" + KnowledgeMaxChars + Environment.NewLine);
         }
     }
 }

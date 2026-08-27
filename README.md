@@ -22,6 +22,7 @@ Windows + Sparx EA required. Two separate guides:
 
 - **[Build with Visual Studio](docs/BUILD_WINDOWS.md)** — workloads, open `EaGpt.sln`, Release DLL
 - **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — `regasm`, EA add-in key, first use, uninstall
+- **[RAG / company knowledge](docs/RAG_OLLAMA.md)** — principles, CMDB, ArchiMate examples, tiedonhallintamalli with Ollama
 
 If you already have Visual Studio and `dotnet` on the EA machine:
 
@@ -36,6 +37,7 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `src/EaGpt.Core` — Ollama client, system prompt, JSON parser/validator, ArchiMate type map (testable on Linux)
 - `src/EaGpt.AddIn` — .NET Framework 4.8 COM add-in, WinForms chat, EA Automation importer
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
+- `knowledge/` — template pack (principles, CMDB extract, ArchiMate examples, tiedonhallintamalli)
 - `scripts/install.ps1` / `uninstall.ps1`
 
 ## Tests

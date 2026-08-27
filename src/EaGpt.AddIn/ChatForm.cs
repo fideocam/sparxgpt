@@ -258,7 +258,8 @@ namespace EaGpt.AddIn
                 return;
             }
 
-            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt);
+            string knowledge = KnowledgeRetriever.Retrieve(_settings.KnowledgeFolder, prompt, _settings.KnowledgeMaxChars);
+            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge);
             string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
             _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
                              "Ollama: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +

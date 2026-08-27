@@ -121,6 +121,8 @@ Deletes from the **model** (elements, relationships, whole diagrams) ask for con
 
 Settings are stored in `%AppData%\EaGpt\settings.ini`.
 
+Optional **company knowledge** (principles, CMDB extract, example viewpoints, tiedonhallintamalli): copy the repo `knowledge\` folder to `%AppData%\EaGpt\knowledge\` (or set `KnowledgeFolder` in settings.ini). See [RAG_OLLAMA.md](RAG_OLLAMA.md).
+
 ## 5. Uninstall
 
 Close EA, then:

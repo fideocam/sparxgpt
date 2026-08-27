@@ -15,13 +15,17 @@ namespace EaGpt.Tests
             {
                 OllamaBaseUrl = "http://192.168.1.8:11434",
                 Model = "mistral",
-                TimeoutMs = 45000
+                TimeoutMs = 45000,
+                KnowledgeFolder = @"\\fileserver\arch\knowledge",
+                KnowledgeMaxChars = 6000
             };
             original.Save(path);
             EaGptSettings loaded = EaGptSettings.Load(path);
             Assert.Equal("http://192.168.1.8:11434", loaded.OllamaBaseUrl);
             Assert.Equal("mistral", loaded.Model);
             Assert.Equal(45000, loaded.TimeoutMs);
+            Assert.Equal(@"\\fileserver\arch\knowledge", loaded.KnowledgeFolder);
+            Assert.Equal(6000, loaded.KnowledgeMaxChars);
         }
 
         [Fact]
