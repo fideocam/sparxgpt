@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -21,8 +22,11 @@ namespace EaGpt.AddIn
         private readonly TextBox _promptBox = new TextBox();
         private readonly Button _askButton = new Button();
         private readonly Button _stopButton = new Button();
+        private readonly Button _clearButton = new Button();
+        private readonly ComboBox _starterBox = new ComboBox();
         private readonly TextBox _debugBox = new TextBox();
         private readonly TabControl _tabs = new TabControl();
+        private readonly List<ChatTurn> _history = new List<ChatTurn>();
 
         private CancellationTokenSource? _cts;
 
@@ -45,12 +49,12 @@ namespace EaGpt.AddIn
                 WrapContents = false,
                 Padding = new Padding(6, 4, 6, 0)
             };
-            top.Controls.Add(new Label { Text = "Ollama", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
+            top.Controls.Add(new Label { Text = "LLM", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             _urlBox.Width = 220;
             _urlBox.Text = _settings.OllamaBaseUrl;
             var tip = new ToolTip();
             tip.SetToolTip(_urlBox,
-                "Ollama API URL. This PC: http://localhost:11434. Another machine on the LAN: http://192.168.1.10:11434 or just 192.168.1.10. That host must listen on the network (OLLAMA_HOST=0.0.0.0).");
+                "LLM API URL. Ollama: http://localhost:11434. LM Studio: http://localhost:1234. Another machine: http://192.168.1.10:11434 or just 192.168.1.10. That host must listen on the network (OLLAMA_HOST=0.0.0.0).");
             top.Controls.Add(_urlBox);
             top.Controls.Add(new Label { Text = "Model", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             _modelBox.Width = 160;
@@ -75,7 +79,19 @@ namespace EaGpt.AddIn
             _responseBox.BackColor = Color.White;
             _responseBox.Font = new Font("Consolas", 9.75F);
 
-            var bottom = new Panel { Dock = DockStyle.Bottom, Height = 110 };
+            var bottom = new Panel { Dock = DockStyle.Bottom, Height = 138 };
+            _starterBox.Dock = DockStyle.Top;
+            _starterBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _starterBox.Items.Add("(example prompts)");
+            _starterBox.Items.Add("Describe the open diagram");
+            _starterBox.Items.Add("Audit this model for quality issues");
+            _starterBox.Items.Add("What depends on the selected element?");
+            _starterBox.Items.Add("Find application components named like the selection");
+            _starterBox.Items.Add("Create a business layer view of the current selection");
+            _starterBox.Items.Add("Add missing application services for the selected process");
+            _starterBox.SelectedIndex = 0;
+            _starterBox.SelectedIndexChanged += StarterPicked;
+
             _promptBox.Multiline = true;
             _promptBox.Dock = DockStyle.Fill;
             _promptBox.AcceptsReturn = true;
@@ -95,10 +111,15 @@ namespace EaGpt.AddIn
             _stopButton.Width = 100;
             _stopButton.Enabled = false;
             _stopButton.Click += (_, __) => _cts?.Cancel();
+            _clearButton.Text = "Clear chat";
+            _clearButton.Width = 100;
+            _clearButton.Click += (_, __) => ClearChat();
             buttons.Controls.Add(_askButton);
             buttons.Controls.Add(_stopButton);
-            bottom.Controls.Add(_promptBox);
+            buttons.Controls.Add(_clearButton);
             bottom.Controls.Add(buttons);
+            bottom.Controls.Add(_starterBox);
+            bottom.Controls.Add(_promptBox);
 
             chatPage.Controls.Add(_responseBox);
             chatPage.Controls.Add(bottom);
@@ -133,6 +154,29 @@ namespace EaGpt.AddIn
                     // Ollama may not be running yet
                 }
             };
+        }
+
+        private void StarterPicked(object? sender, EventArgs e)
+        {
+            if (_starterBox.SelectedIndex <= 0)
+            {
+                return;
+            }
+
+            string? text = _starterBox.SelectedItem as string;
+            _starterBox.SelectedIndex = 0;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                _promptBox.Text = text;
+                _promptBox.Focus();
+                _promptBox.SelectionStart = _promptBox.Text.Length;
+            }
+        }
+
+        private void ClearChat()
+        {
+            _history.Clear();
+            _responseBox.Clear();
         }
 
         private void PromptKeyDown(object? sender, KeyEventArgs e)
@@ -182,7 +226,7 @@ namespace EaGpt.AddIn
                 var client = CreateClient();
                 bool ok = client.CheckConnection();
                 MessageBox.Show(this,
-                    ok ? "Ollama is reachable at " + client.BaseUrl : "Cannot reach Ollama at " + client.BaseUrl,
+                    ok ? client.ApiDisplayName + " is reachable at " + client.BaseUrl : "Cannot reach " + client.BaseUrl,
                     "EaGPT",
                     MessageBoxButtons.OK,
                     ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
@@ -264,8 +308,10 @@ namespace EaGpt.AddIn
             string analysis = ModelAnalysisContext.Build(snapshot, selection, prompt);
             string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge, analysis);
             string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
+            var historyCopy = new List<ChatTurn>(_history);
             _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
-                             "Ollama: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
+                             "LLM: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
+                             "History turns: " + historyCopy.Count + Environment.NewLine +
                              "Selection:" + Environment.NewLine + selection + Environment.NewLine +
                              "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
                              userMessage;
@@ -291,7 +337,7 @@ namespace EaGpt.AddIn
                     {
                         reply.Append(delta);
                         BeginInvoke(new Action(() => AppendResponse(delta)));
-                    }, token);
+                    }, token, historyCopy);
 
                     if (reply.Length == 0)
                     {
@@ -299,7 +345,11 @@ namespace EaGpt.AddIn
                         BeginInvoke(new Action(() => AppendResponse(text)));
                     }
 
-                    BeginInvoke(new Action(() => ApplyIfChanges(repo, snapshot, reply.ToString(), prompt)));
+                    BeginInvoke(new Action(() =>
+                    {
+                        ChatHistory.Remember(_history, prompt, reply.ToString());
+                        ApplyIfChanges(repo, snapshot, reply.ToString(), prompt);
+                    }));
                 }
                 catch (OperationCanceledException)
                 {

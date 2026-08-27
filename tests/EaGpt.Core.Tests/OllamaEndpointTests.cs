@@ -40,6 +40,13 @@ namespace EaGpt.Tests
         }
 
         [Fact]
+        public void TryNormalize_KeepsLmStudioPortAndStripsV1()
+        {
+            Assert.True(OllamaEndpoint.TryNormalize("http://localhost:1234/v1", out string normalized, out _));
+            Assert.Equal("http://localhost:1234", normalized);
+        }
+
+        [Fact]
         public void NormalizeOrDefault_FallsBack()
         {
             Assert.Equal(OllamaClient.DefaultBaseUrl, OllamaEndpoint.NormalizeOrDefault("file:///tmp"));

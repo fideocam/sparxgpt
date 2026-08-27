@@ -8,15 +8,16 @@ Similar commercial/official EA products already exist (OneRAI, Sparx Japan MCP, 
 
 ## What you can do
 
-- Ask for analysis of the model, a diagram, or a selected element (including a deterministic **impact** walk and a compact **Mermaid** neighborhood of the selection)
+- Ask for analysis of the model, a diagram, or a selected element (including a deterministic **impact** walk, **quality audit**, **search hits**, and a compact **Mermaid** neighborhood)
+- Follow up in the same chat (last few turns are sent; **Clear chat** resets)
 - Add ArchiMate elements and relationships (illegal relationship types are rejected with suggestions)
 - Create a new diagram; collapsed LLM coordinates are spread by ArchiMate layer
 - Remove from the current diagram only, or from the model
 - Remove a diagram (elements stay in the model)
 
-Default Ollama endpoint: `http://localhost:11434`, model `llama3.2`. To use Ollama on **another machine on the LAN**, type its address in the EaGPT window (for example `http://192.168.1.10:11434` or `192.168.1.10`). That host must listen on the network (`OLLAMA_HOST=0.0.0.0`).
+Default LLM: Ollama at `http://localhost:11434`, model `llama3.2`. **LM Studio** works at `http://localhost:1234` (OpenAI-compatible `/v1`). To use a server on **another machine on the LAN**, type its address (for example `http://192.168.1.10:11434` or `192.168.1.10`). That host must listen on the network (`OLLAMA_HOST=0.0.0.0`).
 
-Ideas taken from public ArchiMate MCP / AI projects (query tools, legality, viewpoint recipes, Mermaid, audit log) are listed in [docs/ARCHIMATE_AI_LANDSCAPE.md](docs/ARCHIMATE_AI_LANDSCAPE.md). EaGPT remains an in-EA Ollama pane, not an MCP server.
+Ideas taken from public ArchiMate MCP / AI projects and from commercial EA assistants are listed in [docs/ARCHIMATE_AI_LANDSCAPE.md](docs/ARCHIMATE_AI_LANDSCAPE.md) and [docs/COMMERCIAL_ALTERNATIVES.md](docs/COMMERCIAL_ALTERNATIVES.md). EaGPT remains an in-EA local-LLM pane, not an MCP server.
 
 ## Build and install
 
@@ -40,7 +41,7 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `src/EaGpt.AddIn` — .NET Framework 4.8 COM add-in, WinForms chat, EA Automation importer
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
 - `knowledge/` — template pack (principles, CMDB extract, ArchiMate examples, tiedonhallintamalli)
-- `docs/` — install, security, RAG, and [ArchiMate AI landscape](docs/ARCHIMATE_AI_LANDSCAPE.md)
+- `docs/` — install, security, RAG, [open-source landscape](docs/ARCHIMATE_AI_LANDSCAPE.md), [commercial alternatives](docs/COMMERCIAL_ALTERNATIVES.md)
 - `scripts/install.ps1` / `uninstall.ps1`
 
 ## Tests
@@ -55,7 +56,7 @@ The WinForms COM add-in needs Windows + EA; it is not executed in this environme
 
 ## Security
 
-EaGPT talks only to a user-configured Ollama origin, validates LLM JSON before touching EA, and asks before deleting from the model. Details, residual risks (prompt injection, LAN SSRF), and metadata-URL blocking: [docs/SECURITY.md](docs/SECURITY.md).
+EaGPT talks only to a user-configured LLM origin (Ollama `/api/*` or OpenAI-compatible `/v1/*`), validates LLM JSON before touching EA, and asks before deleting from the model. Details, residual risks (prompt injection, LAN SSRF), and metadata-URL blocking: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 

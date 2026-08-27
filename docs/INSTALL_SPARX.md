@@ -94,9 +94,10 @@ If the **EaGPT** menu is missing:
 
 ## 4. First use
 
-1. Start **Ollama** (the Ollama app, or `ollama serve` in a terminal).
-2. In the EaGPT window, the **Ollama** field is the server URL:
-   - This PC: leave `http://localhost:11434`.
+1. Start **Ollama** (`ollama serve`) or **LM Studio** (Start server on port 1234).
+2. In the EaGPT window, the **LLM** field is the server URL:
+   - Ollama on this PC: leave `http://localhost:11434`.
+   - LM Studio on this PC: `http://localhost:1234` (path `/v1` is stripped; EaGPT talks to `/v1/models` and `/v1/chat/completions`).
    - **Another computer on the LAN:** `http://192.168.1.10:11434` or just `192.168.1.10` (port 11434 is added if you omit it). That machine must bind Ollama to the network, for example:
 
      ```powershell
@@ -106,13 +107,14 @@ If the **EaGPT** menu is missing:
 
      Allow TCP 11434 through the Windows Firewall on the Ollama host. HTTPS reverse proxies without a port stay on 443.
 3. Click **Refresh list** and pick a model (for example `llama3.2`).
-4. Click **Test** — you should see that Ollama is reachable.
+4. Click **Test** — you should see that the LLM is reachable.
 5. Open or select an ArchiMate package/diagram.
-6. Type a request and click **Ask EaGPT**, for example:
+6. Type a request (or pick an example prompt) and click **Ask EaGPT**, for example:
    - `Add a Business Actor called Customer`
    - `Describe this diagram`
-   - `What business processes use this application?`
-   - `Remove this element from the diagram`
+   - `Audit this model for quality issues`
+   - `What depends on the selected element?`
+   - `Find application components named CRM`
    - `Create a new diagram showing order fulfilment`
 
 Selection in the Project Browser or on the open diagram is sent as context.

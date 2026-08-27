@@ -85,6 +85,13 @@ namespace EaGpt
         {
             var sb = new StringBuilder();
             sb.Append(ModelSummary.Format(snapshot));
+            sb.Append(ModelQuality.Format(snapshot, ModelQuality.LooksLikeAuditQuery(prompt)));
+
+            string search = ModelSearch.Format(snapshot, prompt);
+            if (search.Length > 0)
+            {
+                sb.Append(search);
+            }
 
             var ids = SelectionIds.Parse(selectionContext);
             if (ids.Count == 0 && SelectionIds.LooksLikeImpactQuery(prompt))

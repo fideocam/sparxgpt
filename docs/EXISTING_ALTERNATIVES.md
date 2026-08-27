@@ -21,3 +21,5 @@ None of the EA options is an open-source ArchiGPT clone: **in-EA pane + Ollama-f
 EaGPT fills that gap. It is a Windows COM add-in, not an MCP server (Sparx Japan already ships a free MCP add-in).
 
 Open-source **Archi** MCP servers (fanievh, JesseLeresche, thijs-hakkenberg, byrondelgado) are the right place to steal *capabilities* from — relationship legality, impact walks, viewpoint recipes, Mermaid neighborhoods, audit logs — without becoming another MCP product. See [ARCHIMATE_AI_LANDSCAPE.md](ARCHIMATE_AI_LANDSCAPE.md).
+
+Commercial EA products (OneRAI, Kernaro, built-in Model Chat, AI Power Tools) are covered in [COMMERCIAL_ALTERNATIVES.md](COMMERCIAL_ALTERNATIVES.md). From those we took quality audit, model search, multi-turn chat, selection notes, and LM Studio / OpenAI-compatible endpoints — not Jira, Hub RBAC, or vision-to-model.
