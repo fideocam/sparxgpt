@@ -43,7 +43,7 @@ namespace EaGpt
                 return DefaultModel;
             }
 
-            string t = model.Trim();
+            string t = model!.Trim();
             if (t.Length > 128)
             {
                 t = t.Substring(0, 128);
@@ -83,7 +83,34 @@ namespace EaGpt
             request.ReadWriteTimeout = timeoutMs;
             request.AllowAutoRedirect = false;
             request.MaximumAutomaticRedirections = 0;
+            request.KeepAlive = false;
+            request.Proxy = BypassProxy.Instance;
+            if (request.ServicePoint != null)
+            {
+                request.ServicePoint.Expect100Continue = false;
+            }
+
             return request;
+        }
+
+        /// <summary>
+        /// Direct connections only. An HTTP_PROXY would otherwise receive the model digest.
+        /// </summary>
+        private sealed class BypassProxy : IWebProxy
+        {
+            public static readonly BypassProxy Instance = new BypassProxy();
+
+            public ICredentials? Credentials { get; set; }
+
+            public Uri? GetProxy(Uri destination)
+            {
+                return destination;
+            }
+
+            public bool IsBypassed(Uri host)
+            {
+                return true;
+            }
         }
 
         public bool CheckConnection()

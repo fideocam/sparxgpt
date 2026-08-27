@@ -25,6 +25,7 @@ The LLM is **not** trusted. Parser, schema, and mutation-policy checks run befor
 - Path, query, and fragment are stripped; the client only calls `/api/tags` and `/api/chat` on the origin.
 - Redirects are disabled (`AllowAutoRedirect = false`).
 - Timeouts are clamped to 3s–600s.
+- `HTTP_PROXY` is ignored so the model digest is not sent through a proxy.
 - Model names cannot contain quotes, backslashes, or control characters (JSON injection into the request body).
 - Request JSON escapes quotes, newlines, and other control characters.
 - Well-known cloud metadata endpoints are blocked, including encodings:
@@ -53,7 +54,7 @@ Element/relationship/diagram names are XML-escaped. Control characters are strip
 ## Residual risks (accepted)
 
 1. **Prompt injection via model content.** Names and notes in the EA project are sent to the LLM. A planted name can try to make the model emit change JSON. Mitigation: schema + limits + delete confirmation. **Adds still apply without a second prompt** if they validate. Review the chat transcript before continuing if the model is untrusted.
-2. **SSRF to the LAN.** A user (or a tampered `settings.ini`) can point EaGPT at any http(s) host except the blocked metadata addresses. That is required for a networked Ollama box. Do not paste untrusted URLs into the Ollama field.
+2. **SSRF to the LAN.** A user (or a tampered `settings.ini`) can point EaGPT at any http(s) host except the blocked metadata addresses. That is required for a networked Ollama box. Do not paste untrusted URLs into the Ollama field. Requests do not use `HTTP_PROXY`.
 3. **DNS rebinding / newly registered names.** Hostname allowlisting is not used. Bind Ollama to localhost when you can.
 4. **Unsigned COM `/codebase`.** `install.ps1` registers the DLL for the current user. Only load a build you compiled or otherwise trust.
 5. **Ollama sees the model digest.** Treat the local model like any other process that can read the open architecture. Do not point EaGPT at a public hosted LLM unless that is acceptable.

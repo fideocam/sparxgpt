@@ -24,7 +24,7 @@ namespace EaGpt
                 return false;
             }
 
-            string s = raw.Trim();
+            string s = raw!.Trim();
             if (s.Length > MaxUrlLength)
             {
                 error = "Ollama URL is too long.";
@@ -188,26 +188,10 @@ namespace EaGpt
 
             if (ip.AddressFamily == AddressFamily.InterNetworkV6)
             {
-                byte[] b = ip.GetAddressBytes();
-                // AWS IMDSv2 IPv6: fd00:ec2::254
-                if (b.Length == 16 &&
-                    b[0] == 0xfd && b[1] == 0x00 && b[2] == 0x0e && b[3] == 0xc2 &&
-                    b[15] == 0xfe)
+                // AWS IMDSv2 IPv6 is fd00:ec2::254 (last group is hex, not decimal 254).
+                if (IPAddress.TryParse("fd00:ec2::254", out IPAddress? awsImds) && awsImds != null && ip.Equals(awsImds))
                 {
-                    bool restZero = true;
-                    for (int i = 4; i < 15; i++)
-                    {
-                        if (b[i] != 0)
-                        {
-                            restZero = false;
-                            break;
-                        }
-                    }
-
-                    if (restZero)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
 

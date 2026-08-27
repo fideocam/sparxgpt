@@ -26,7 +26,12 @@ namespace EaGpt
 
         public static bool LooksLikeChangesJson(string? raw)
         {
-            if (string.IsNullOrWhiteSpace(raw) || raw.Length > MutationPolicy.MaxReplyChars)
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            if (raw!.Length > MutationPolicy.MaxReplyChars)
             {
                 return false;
             }

@@ -14,8 +14,7 @@ namespace EaGpt.Tests
         [Fact]
         public void Escape_ControlCharactersAsUnicode()
         {
-            Assert.Contains("\\u0001", JsonUtil.Escape("x\u0001y"));
-            Assert.DoesNotContain("\u0001", JsonUtil.Escape("x\u0001y"));
+            Assert.Equal("x\\u0001y", JsonUtil.Escape("x\u0001y"));
         }
 
         [Fact]

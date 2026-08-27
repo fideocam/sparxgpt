@@ -43,8 +43,8 @@ namespace EaGpt.Tests
             });
 
             string xml = ModelDigestBuilder.ToXml(snap);
-            Assert.DoesNotContain("\0", xml);
-            Assert.DoesNotContain("\u0001", xml);
+            Assert.True(xml.IndexOf('\0') < 0);
+            Assert.True(xml.IndexOf('\u0001') < 0);
             Assert.Contains("name=\"evilname break\"", xml);
         }
 
