@@ -14,7 +14,7 @@ Similar commercial/official EA products already exist (OneRAI, Sparx Japan MCP, 
 - Remove from the current diagram only, or from the model
 - Remove a diagram (elements stay in the model)
 
-Default Ollama endpoint: `http://localhost:11434`, model `llama3.2`.
+Default Ollama endpoint: `http://localhost:11434`, model `llama3.2`. To use Ollama on **another machine on the LAN**, type its address in the EaGPT window (for example `http://192.168.1.10:11434` or `192.168.1.10`). That host must listen on the network (`OLLAMA_HOST=0.0.0.0`).
 
 ## Build and install
 

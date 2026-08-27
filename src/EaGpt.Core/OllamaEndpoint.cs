@@ -69,11 +69,27 @@ namespace EaGpt
 
             var builder = new UriBuilder(uri.Scheme, uri.Host)
             {
-                Port = uri.IsDefaultPort ? -1 : uri.Port,
                 Path = "",
                 Query = "",
                 Fragment = ""
             };
+            if (UserOmittedPort(s))
+            {
+                // Same as ArchiGPT: HTTP with no port uses Ollama's 11434; HTTPS stays on 443.
+                if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+                {
+                    builder.Port = OllamaClient.DefaultPort;
+                }
+                else
+                {
+                    builder.Port = -1;
+                }
+            }
+            else
+            {
+                builder.Port = uri.Port;
+            }
+
             normalized = builder.Uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
             return true;
         }
@@ -124,6 +140,50 @@ namespace EaGpt
             }
 
             return h;
+        }
+
+        /// <summary>
+        /// True when the absolute URL has no explicit port (Java URL.getPort() == -1).
+        /// <c>http://host:80</c> counts as explicit so we do not rewrite it to 11434.
+        /// </summary>
+        internal static bool UserOmittedPort(string absoluteUrl)
+        {
+            int scheme = absoluteUrl.IndexOf("://", StringComparison.Ordinal);
+            if (scheme < 0)
+            {
+                return true;
+            }
+
+            int start = scheme + 3;
+            int end = absoluteUrl.Length;
+            foreach (char sep in new[] { '/', '?', '#' })
+            {
+                int i = absoluteUrl.IndexOf(sep, start);
+                if (i >= 0 && i < end)
+                {
+                    end = i;
+                }
+            }
+
+            string authority = absoluteUrl.Substring(start, end - start);
+            int at = authority.LastIndexOf('@');
+            if (at >= 0)
+            {
+                authority = authority.Substring(at + 1);
+            }
+
+            if (authority.StartsWith("[", StringComparison.Ordinal))
+            {
+                int close = authority.IndexOf(']');
+                if (close < 0)
+                {
+                    return true;
+                }
+
+                return close + 1 >= authority.Length || authority[close + 1] != ':';
+            }
+
+            return authority.LastIndexOf(':') < 0;
         }
 
         internal static bool TryParseHostAsIp(string host, out IPAddress? ip)

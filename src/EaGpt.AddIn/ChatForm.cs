@@ -48,6 +48,9 @@ namespace EaGpt.AddIn
             top.Controls.Add(new Label { Text = "Ollama", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             _urlBox.Width = 220;
             _urlBox.Text = _settings.OllamaBaseUrl;
+            var tip = new ToolTip();
+            tip.SetToolTip(_urlBox,
+                "Ollama API URL. This PC: http://localhost:11434. Another machine on the LAN: http://192.168.1.10:11434 or just 192.168.1.10. That host must listen on the network (OLLAMA_HOST=0.0.0.0).");
             top.Controls.Add(_urlBox);
             top.Controls.Add(new Label { Text = "Model", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             _modelBox.Width = 160;

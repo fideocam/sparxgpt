@@ -95,7 +95,16 @@ If the **EaGPT** menu is missing:
 ## 4. First use
 
 1. Start **Ollama** (the Ollama app, or `ollama serve` in a terminal).
-2. In the EaGPT window, leave the URL as `http://localhost:11434` unless Ollama is on another machine.
+2. In the EaGPT window, the **Ollama** field is the server URL:
+   - This PC: leave `http://localhost:11434`.
+   - **Another computer on the LAN:** `http://192.168.1.10:11434` or just `192.168.1.10` (port 11434 is added if you omit it). That machine must bind Ollama to the network, for example:
+
+     ```powershell
+     $env:OLLAMA_HOST = "0.0.0.0"
+     ollama serve
+     ```
+
+     Allow TCP 11434 through the Windows Firewall on the Ollama host. HTTPS reverse proxies without a port stay on 443.
 3. Click **Refresh list** and pick a model (for example `llama3.2`).
 4. Click **Test** — you should see that Ollama is reachable.
 5. Open or select an ArchiMate package/diagram.
@@ -133,7 +142,7 @@ Restart EA. The **EaGPT** menu should be gone.
 | No EaGPT menu | Registry key, add-in enabled, EA restarted, 32/64-bit match. |
 | “Retrieving the COM class factory failed” | `regasm /codebase` was not run, or the DLL moved. Re-run `install.ps1`. |
 | BadImageFormatException | 32-bit EA with an x64 DLL (or the reverse). Rebuild and `install.ps1 -X86` if needed. |
-| Test cannot reach Ollama | Ollama is running; URL is `http://localhost:11434`; Windows Firewall; try `ollama list` in PowerShell. |
+| Test cannot reach Ollama | Ollama is running; URL is `http://localhost:11434` or a LAN address; on a LAN host set `OLLAMA_HOST=0.0.0.0` and open firewall TCP 11434. Try `ollama list` on the server. |
 | Model list empty | Pull a model (`ollama pull llama3.2`), then **Refresh list**. |
 | Changes not applied | Reply may be analysis (plain text). For adds, the model must return JSON. ArchiMate 3 MDG must be enabled. Open a package as the create target. |
 | Elements have the wrong type | Enable ArchiMate 3 MDG; types are `ArchiMate3::ArchiMate_…`. |

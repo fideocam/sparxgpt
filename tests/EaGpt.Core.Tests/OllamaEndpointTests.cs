@@ -60,6 +60,21 @@ namespace EaGpt.Tests
         }
 
         [Theory]
+        [InlineData("192.168.1.10", "http://192.168.1.10:11434")]
+        [InlineData("192.168.1.10:11434", "http://192.168.1.10:11434")]
+        [InlineData("http://192.168.1.10", "http://192.168.1.10:11434")]
+        [InlineData("http://gpu-box", "http://gpu-box:11434")]
+        [InlineData("http://192.168.1.10:12345", "http://192.168.1.10:12345")]
+        [InlineData("https://ollama.example.com", "https://ollama.example.com")]
+        [InlineData("http://192.168.1.10:11434/", "http://192.168.1.10:11434")]
+        [InlineData("localhost", "http://localhost:11434")]
+        public void TryNormalize_LanHostsGetOllamaPortLikeArchiGpt(string raw, string expected)
+        {
+            Assert.True(OllamaEndpoint.TryNormalize(raw, out string normalized, out string error), error);
+            Assert.Equal(expected, normalized);
+        }
+
+        [Theory]
         [InlineData("http://169.254.169.254/")]
         [InlineData("http://2852039166/")]
         [InlineData("http://0xa9fea9fe/")]
