@@ -16,9 +16,14 @@ Similar commercial/official EA products already exist (OneRAI, Sparx Japan MCP, 
 
 Default Ollama endpoint: `http://localhost:11434`, model `llama3.2`.
 
-## Install
+## Build and install
 
-Windows + EA required. See [docs/WINDOWS_INSTALL.md](docs/WINDOWS_INSTALL.md).
+Windows + Sparx EA required. Two separate guides:
+
+- **[Build with Visual Studio](docs/BUILD_WINDOWS.md)** — workloads, open `EaGpt.sln`, Release DLL
+- **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — `regasm`, EA add-in key, first use, uninstall
+
+If you already have Visual Studio and `dotnet` on the EA machine:
 
 ```powershell
 .\scripts\install.ps1
