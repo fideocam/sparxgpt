@@ -70,10 +70,10 @@ If you run 32-bit EA, rebuild with `-p:PlatformTarget=x86` and use 32-bit `regas
 
 ## Testing in this repo (Linux)
 
-Core logic (parser, validator, type map, Ollama client helpers) is covered by:
+Core logic (parser, validator, type map, Ollama URL policy, settings, JSON helpers) is covered by:
 
 ```bash
 dotnet test tests/EaGpt.Core.Tests/EaGpt.Core.Tests.csproj
 ```
 
-Live EA COM tests must run on Windows with EA installed.
+Live EA COM tests must run on Windows with EA installed. See [SECURITY.md](SECURITY.md) for the threat model.

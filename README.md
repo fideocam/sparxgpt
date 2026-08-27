@@ -33,6 +33,20 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
 - `scripts/install.ps1` / `uninstall.ps1`
 
+## Tests
+
+Core protocol tests (parser, validator, Ollama URL policy, settings, JSON escaping) run on Linux:
+
+```bash
+dotnet test tests/EaGpt.Core.Tests/EaGpt.Core.Tests.csproj
+```
+
+The WinForms COM add-in needs Windows + EA; it is not executed in this environment.
+
+## Security
+
+EaGPT talks only to a user-configured Ollama origin, validates LLM JSON before touching EA, and asks before deleting from the model. Details, residual risks (prompt injection, LAN SSRF), and metadata-URL blocking: [docs/SECURITY.md](docs/SECURITY.md).
+
 ## License
 
 MIT. Prompt/JSON ideas follow ArchiGPT; this is a new C# codebase, not a port of the Eclipse plugin.

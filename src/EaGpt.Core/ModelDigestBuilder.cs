@@ -105,7 +105,31 @@ namespace EaGpt
                 return "";
             }
 
-            return s!.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+            var sb = new StringBuilder(s!.Length);
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '&': sb.Append("&amp;"); break;
+                    case '<': sb.Append("&lt;"); break;
+                    case '>': sb.Append("&gt;"); break;
+                    case '"': sb.Append("&quot;"); break;
+                    case '\r':
+                    case '\n':
+                    case '\t':
+                        sb.Append(' ');
+                        break;
+                    default:
+                        if (c >= ' ')
+                        {
+                            sb.Append(c);
+                        }
+
+                        break;
+                }
+            }
+
+            return sb.ToString();
         }
     }
 

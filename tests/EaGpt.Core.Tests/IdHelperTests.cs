@@ -33,5 +33,14 @@ namespace EaGpt.Tests
             string id = IdHelper.EnsureArchiMateId(null);
             Assert.True(IdHelper.IsArchiMateId(id));
         }
+
+        [Fact]
+        public void Ensure_DoesNotPassThroughArbitraryStrings()
+        {
+            string id = IdHelper.EnsureArchiMateId("http://evil.example/;DROP");
+            Assert.True(IdHelper.IsArchiMateId(id));
+            Assert.DoesNotContain("evil", id);
+            Assert.DoesNotContain("DROP", id);
+        }
     }
 }

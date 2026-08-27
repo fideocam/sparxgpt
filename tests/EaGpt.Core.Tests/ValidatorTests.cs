@@ -48,5 +48,25 @@ namespace EaGpt.Tests
             });
             Assert.Empty(ArchiMateSchemaValidator.Validate(result));
         }
+
+        [Fact]
+        public void Validate_RejectsMissingIdAndRelationshipEndpoints()
+        {
+            var result = new ArchiMateLlmResult();
+            result.Elements.Add(new ArchiMateLlmResult.ElementSpec { Type = "BusinessActor", Name = "X", Id = "  " });
+            result.Relationships.Add(new ArchiMateLlmResult.RelationshipSpec { Type = "Serving", Source = "", Target = "" });
+            var errors = ArchiMateSchemaValidator.Validate(result);
+            Assert.Contains(errors, e => e.Contains("missing id"));
+            Assert.Contains(errors, e => e.Contains("missing source"));
+            Assert.Contains(errors, e => e.Contains("missing target"));
+        }
+
+        [Fact]
+        public void Validate_SkipsViewPlaceholderElements()
+        {
+            var result = new ArchiMateLlmResult();
+            result.Elements.Add(new ArchiMateLlmResult.ElementSpec { Type = "View", Name = "Overview", Id = "id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+            Assert.Empty(ArchiMateSchemaValidator.Validate(result));
+        }
     }
 }

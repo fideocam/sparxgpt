@@ -26,24 +26,71 @@ namespace EaGpt
 
         public OllamaClient(string baseUrl, string? model, int timeoutMs = 180000)
         {
-            _baseUrl = (baseUrl ?? DefaultBaseUrl).TrimEnd('/');
-            if (!_baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                !_baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (!OllamaEndpoint.TryNormalize(baseUrl, out string normalized, out string error))
             {
-                _baseUrl = "http://" + _baseUrl;
+                throw new ArgumentException(error, nameof(baseUrl));
             }
 
-            _model = string.IsNullOrWhiteSpace(model) ? DefaultModel : model!.Trim();
-            _timeoutMs = timeoutMs > 0 ? timeoutMs : 180000;
+            _baseUrl = normalized;
+            _model = SanitizeModelName(model);
+            _timeoutMs = ClampTimeout(timeoutMs);
+        }
+
+        public static string SanitizeModelName(string? model)
+        {
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                return DefaultModel;
+            }
+
+            string t = model.Trim();
+            if (t.Length > 128)
+            {
+                t = t.Substring(0, 128);
+            }
+
+            foreach (char c in t)
+            {
+                if (c < 32 || c == '"' || c == '\\')
+                {
+                    return DefaultModel;
+                }
+            }
+
+            return t;
+        }
+
+        public static int ClampTimeout(int timeoutMs)
+        {
+            if (timeoutMs < 3000)
+            {
+                return 3000;
+            }
+
+            if (timeoutMs > 600000)
+            {
+                return 600000;
+            }
+
+            return timeoutMs;
+        }
+
+        private static HttpWebRequest CreateRequest(string url, string method, int timeoutMs)
+        {
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = method;
+            request.Timeout = timeoutMs;
+            request.ReadWriteTimeout = timeoutMs;
+            request.AllowAutoRedirect = false;
+            request.MaximumAutomaticRedirections = 0;
+            return request;
         }
 
         public bool CheckConnection()
         {
             try
             {
-                var request = (HttpWebRequest)WebRequest.Create(_baseUrl + "/api/tags");
-                request.Method = "GET";
-                request.Timeout = 3000;
+                var request = CreateRequest(_baseUrl + "/api/tags", "GET", 3000);
                 using var response = (HttpWebResponse)request.GetResponse();
                 return (int)response.StatusCode >= 200 && (int)response.StatusCode < 400;
             }
@@ -70,52 +117,63 @@ namespace EaGpt
         public string Chat(string systemPrompt, string userPrompt, Action<string>? onDelta, CancellationToken cancellationToken = default)
         {
             string requestBody = BuildChatRequestJson(_model, systemPrompt, userPrompt, stream: onDelta != null);
-            var request = (HttpWebRequest)WebRequest.Create(_baseUrl + "/api/chat");
-            request.Method = "POST";
+            var request = CreateRequest(_baseUrl + "/api/chat", "POST", _timeoutMs);
             request.ContentType = "application/json";
-            request.Timeout = _timeoutMs;
-            request.ReadWriteTimeout = _timeoutMs;
-            byte[] bytes = Encoding.UTF8.GetBytes(requestBody);
-            request.ContentLength = bytes.Length;
-            using (Stream os = request.GetRequestStream())
+            cancellationToken.ThrowIfCancellationRequested();
+            using (cancellationToken.Register(() =>
             {
-                os.Write(bytes, 0, bytes.Length);
-            }
-
-            using var response = (HttpWebResponse)request.GetResponse();
-            using var stream = response.GetResponseStream();
-            if (stream == null)
-            {
-                return "";
-            }
-
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-            if (onDelta == null)
-            {
-                string body = reader.ReadToEnd();
-                ThrowIfHttpError(response, body);
-                return OllamaJson.ExtractMessageContent(body);
-            }
-
-            var full = new StringBuilder();
-            string? line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (string.IsNullOrWhiteSpace(line))
+                try
                 {
-                    continue;
+                    request.Abort();
+                }
+                catch
+                {
+                    // already completed
+                }
+            }))
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(requestBody);
+                request.ContentLength = bytes.Length;
+                using (Stream os = request.GetRequestStream())
+                {
+                    os.Write(bytes, 0, bytes.Length);
                 }
 
-                string delta = OllamaJson.ExtractMessageContent(line);
-                if (delta.Length > 0)
+                using var response = (HttpWebResponse)request.GetResponse();
+                using var stream = response.GetResponseStream();
+                if (stream == null)
                 {
-                    full.Append(delta);
-                    onDelta(delta);
+                    return "";
                 }
-            }
 
-            return full.ToString();
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                if (onDelta == null)
+                {
+                    string body = reader.ReadToEnd();
+                    ThrowIfHttpError(response, body);
+                    return OllamaJson.ExtractMessageContent(body);
+                }
+
+                var full = new StringBuilder();
+                string? line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    string delta = OllamaJson.ExtractMessageContent(line);
+                    if (delta.Length > 0)
+                    {
+                        full.Append(delta);
+                        onDelta(delta);
+                    }
+                }
+
+                return full.ToString();
+            }
         }
 
         public static string BuildChatRequestJson(string model, string systemPrompt, string userPrompt, bool stream)
@@ -131,9 +189,7 @@ namespace EaGpt
 
         private static string Get(string url, int timeoutMs)
         {
-            var request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            request.Timeout = timeoutMs;
+            var request = CreateRequest(url, "GET", timeoutMs);
             using var response = (HttpWebResponse)request.GetResponse();
             using var stream = response.GetResponseStream();
             using var reader = stream != null ? new StreamReader(stream, Encoding.UTF8) : null;

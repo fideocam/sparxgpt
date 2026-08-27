@@ -208,6 +208,10 @@ namespace EaGpt.AddIn
         private static ComObj? CreateElement(ComObj package, string archiType, string name, string id)
         {
             string fq = ArchiMateEaTypeMap.ElementFqType(archiType);
+            if (string.IsNullOrEmpty(fq))
+            {
+                return null;
+            }
             ComObj? elements = package.Child("Elements");
             if (elements == null)
             {
@@ -275,6 +279,10 @@ namespace EaGpt.AddIn
         private static ComObj? CreateConnector(ComObj source, ComObj target, string relType, string name, string id)
         {
             string fq = ArchiMateEaTypeMap.RelationshipFqType(relType);
+            if (string.IsNullOrEmpty(fq))
+            {
+                return null;
+            }
             ComObj? connectors = source.Child("Connectors");
             if (connectors == null)
             {

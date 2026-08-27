@@ -33,5 +33,12 @@ namespace EaGpt.Tests
             Assert.Equal("BusinessActor", ArchiMateEaTypeMap.FromEaStereotype("ArchiMate3::ArchiMate_BusinessActor", false));
             Assert.Equal("ServingRelationship", ArchiMateEaTypeMap.FromEaStereotype("ArchiMate_Serving", true));
         }
+
+        [Fact]
+        public void UnknownTypes_DoNotInventEaStereotypes()
+        {
+            Assert.Equal("", ArchiMateEaTypeMap.ElementFqType("Spaceship"));
+            Assert.Equal("", ArchiMateEaTypeMap.RelationshipFqType("TeleportRelationship"));
+        }
     }
 }

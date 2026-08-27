@@ -22,7 +22,16 @@ namespace EaGpt
                     case '\n': sb.Append("\\n"); break;
                     case '\r': sb.Append("\\r"); break;
                     case '\t': sb.Append("\\t"); break;
-                    default: sb.Append(c); break;
+                    default:
+                        if (c < ' ')
+                        {
+                            sb.Append("\\u").Append(((int)c).ToString("x4"));
+                        }
+                        else
+                        {
+                            sb.Append(c);
+                        }
+                        break;
                 }
             }
 

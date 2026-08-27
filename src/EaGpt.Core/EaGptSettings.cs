@@ -41,15 +41,15 @@ namespace EaGpt
                 string value = line.Substring(eq + 1).Trim();
                 if (key.Equals("OllamaBaseUrl", StringComparison.OrdinalIgnoreCase))
                 {
-                    settings.OllamaBaseUrl = value;
+                    settings.OllamaBaseUrl = OllamaEndpoint.NormalizeOrDefault(value);
                 }
                 else if (key.Equals("Model", StringComparison.OrdinalIgnoreCase))
                 {
-                    settings.Model = value;
+                    settings.Model = OllamaClient.SanitizeModelName(value);
                 }
                 else if (key.Equals("TimeoutMs", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int ms))
                 {
-                    settings.TimeoutMs = ms;
+                    settings.TimeoutMs = OllamaClient.ClampTimeout(ms);
                 }
             }
 
@@ -58,6 +58,9 @@ namespace EaGpt
 
         public void Save(string? path = null)
         {
+            OllamaBaseUrl = OllamaEndpoint.NormalizeOrDefault(OllamaBaseUrl);
+            Model = OllamaClient.SanitizeModelName(Model);
+            TimeoutMs = OllamaClient.ClampTimeout(TimeoutMs);
             string file = path ?? DefaultPath();
             string dir = Path.GetDirectoryName(file) ?? "";
             if (dir.Length > 0)

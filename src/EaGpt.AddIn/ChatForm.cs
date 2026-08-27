@@ -144,13 +144,24 @@ namespace EaGpt.AddIn
         private OllamaClient CreateClient()
         {
             PersistSettings();
-            return new OllamaClient(_urlBox.Text.Trim(), _modelBox.Text.Trim(), _settings.TimeoutMs);
+            if (!OllamaEndpoint.TryNormalize(_urlBox.Text, out string normalized, out string error))
+            {
+                throw new ArgumentException(error);
+            }
+
+            _urlBox.Text = normalized;
+            return new OllamaClient(normalized, _modelBox.Text.Trim(), _settings.TimeoutMs);
         }
 
         private void PersistSettings()
         {
-            _settings.OllamaBaseUrl = _urlBox.Text.Trim();
-            _settings.Model = _modelBox.Text.Trim();
+            if (OllamaEndpoint.TryNormalize(_urlBox.Text, out string normalized, out _))
+            {
+                _urlBox.Text = normalized;
+                _settings.OllamaBaseUrl = normalized;
+            }
+
+            _settings.Model = OllamaClient.SanitizeModelName(_modelBox.Text);
             try
             {
                 _settings.Save();
@@ -163,13 +174,20 @@ namespace EaGpt.AddIn
 
         private void TestConnection()
         {
-            var client = CreateClient();
-            bool ok = client.CheckConnection();
-            MessageBox.Show(this,
-                ok ? "Ollama is reachable at " + client.BaseUrl : "Cannot reach Ollama at " + client.BaseUrl,
-                "EaGPT",
-                MessageBoxButtons.OK,
-                ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            try
+            {
+                var client = CreateClient();
+                bool ok = client.CheckConnection();
+                MessageBox.Show(this,
+                    ok ? "Ollama is reachable at " + client.BaseUrl : "Cannot reach Ollama at " + client.BaseUrl,
+                    "EaGPT",
+                    MessageBoxButtons.OK,
+                    ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "EaGPT", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void RefreshModels()
@@ -245,7 +263,18 @@ namespace EaGpt.AddIn
                              "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
                              userMessage;
 
-            var client = CreateClient();
+            OllamaClient client;
+            try
+            {
+                client = CreateClient();
+            }
+            catch (Exception ex)
+            {
+                AppendResponse("Invalid Ollama settings: " + ex.Message + Environment.NewLine);
+                FinishRequest();
+                return;
+            }
+
             var reply = new StringBuilder();
             Task.Run(() =>
             {
@@ -296,10 +325,27 @@ namespace EaGpt.AddIn
             }
 
             var errors = ArchiMateSchemaValidator.Validate(parsed);
+            errors.AddRange(MutationPolicy.CheckLimits(parsed));
             if (errors.Count > 0)
             {
                 AppendResponse("Validation errors:" + Environment.NewLine + string.Join(Environment.NewLine, errors) + Environment.NewLine);
                 return;
+            }
+
+            if (MutationPolicy.IsDestructive(parsed))
+            {
+                DialogResult confirm = MessageBox.Show(
+                    this,
+                    MutationPolicy.DestructiveSummary(parsed),
+                    "EaGPT",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+                if (confirm != DialogResult.Yes)
+                {
+                    AppendResponse("Destructive changes were not applied." + Environment.NewLine);
+                    return;
+                }
             }
 
             try

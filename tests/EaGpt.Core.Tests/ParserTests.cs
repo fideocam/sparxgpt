@@ -62,7 +62,57 @@ namespace EaGpt.Tests
         public void LooksLikeChangesJson_FalseForAnalysis()
         {
             Assert.False(ArchiMateLlmResultParser.LooksLikeChangesJson("The model contains a Customer actor."));
+            Assert.False(ArchiMateLlmResultParser.LooksLikeChangesJson("There are several elements and relationships in this model."));
             Assert.True(ArchiMateLlmResultParser.LooksLikeChangesJson("{\"elements\":[],\"relationships\":[]}"));
+        }
+
+        [Fact]
+        public void Parse_IgnoresUnknownKeys()
+        {
+            const string json = @"{
+  ""elements"":[{""type"":""BusinessActor"",""name"":""Customer"",""id"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"",""extra"":""ignore""}],
+  ""osCommand"":""rm -rf /"",
+  ""relationships"":[]
+}";
+            var result = ArchiMateLlmResultParser.Parse(json);
+            Assert.Single(result.Elements);
+            Assert.Equal("Customer", result.Elements[0].Name);
+            Assert.Empty(result.Relationships);
+        }
+
+        [Fact]
+        public void Parse_OversizedReply_SetsError()
+        {
+            string raw = "{\"elements\":[" + new string('x', MutationPolicy.MaxReplyChars + 10) + "]}";
+            var result = ArchiMateLlmResultParser.Parse(raw);
+            Assert.Equal("Reply too large to apply as model changes.", result.Error);
+            Assert.False(result.HasMutations);
+            Assert.False(ArchiMateLlmResultParser.LooksLikeChangesJson(raw));
+        }
+
+        [Fact]
+        public void Parse_ClampsHugeDiagramCoordinates()
+        {
+            const string json = @"{
+  ""elements"":[],
+  ""relationships"":[],
+  ""diagram"":{
+    ""name"":""Layout"",
+    ""nodes"":[{""elementId"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"",""x"":999999,""y"":-40,""width"":12,""height"":9}]
+  }
+}";
+            var result = ArchiMateLlmResultParser.Parse(json);
+            Assert.NotNull(result.Diagram);
+            Assert.Equal(MutationPolicy.MaxCoord, result.Diagram!.Nodes[0].X);
+            Assert.Equal(0, result.Diagram.Nodes[0].Y);
+        }
+
+        [Fact]
+        public void Parse_ErrorFieldWithoutMutations()
+        {
+            var result = ArchiMateLlmResultParser.Parse("{\"error\":\"I do not understand\"}");
+            Assert.Equal("I do not understand", result.Error);
+            Assert.False(result.HasMutations);
         }
     }
 }

@@ -10,4 +10,7 @@
   <ItemGroup>
     <EmbeddedResource Include="system-prompt.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="EaGpt.Core.Tests" />
+  </ItemGroup>
 </Project>

@@ -94,9 +94,9 @@ namespace EaGpt
         public static string ElementFqType(string archiMateType)
         {
             string canon = ArchiMateSchemaValidator.NormalizeElementType(archiMateType);
-            if (!ElementStereotype.TryGetValue(canon, out string? stereo))
+            if (!ElementStereotype.TryGetValue(canon, out string? stereo) || string.IsNullOrEmpty(stereo))
             {
-                stereo = "ArchiMate_" + canon;
+                return "";
             }
 
             return Profile + "::" + stereo;
@@ -105,9 +105,9 @@ namespace EaGpt
         public static string RelationshipFqType(string archiMateType)
         {
             string canon = ArchiMateSchemaValidator.NormalizeRelationshipType(archiMateType);
-            if (!RelationshipStereotype.TryGetValue(canon, out string? stereo))
+            if (!RelationshipStereotype.TryGetValue(canon, out string? stereo) || string.IsNullOrEmpty(stereo))
             {
-                stereo = "ArchiMate_" + canon.Replace("Relationship", "");
+                return "";
             }
 
             return Profile + "::" + stereo;

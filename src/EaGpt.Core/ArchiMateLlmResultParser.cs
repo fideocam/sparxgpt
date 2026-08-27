@@ -20,21 +20,29 @@ namespace EaGpt
         private static readonly Regex RelId = new Regex("\"id\"\\s*:\\s*\"([^\"]*)\"");
         private static readonly Regex ErrorField = new Regex("\"error\"\\s*:\\s*\"([^\"]*)\"");
 
+        private static readonly Regex ChangesKey = new Regex(
+            "\"(elements|removeElementIds|removeRelationshipIds|removeDiagramNames|removeElementFromDiagramIds|removeRelationshipFromDiagramIds)\"\\s*:\\s*\\[|\"diagram\"\\s*:\\s*\\{",
+            RegexOptions.Compiled);
+
         public static bool LooksLikeChangesJson(string? raw)
         {
-            if (string.IsNullOrWhiteSpace(raw))
+            if (string.IsNullOrWhiteSpace(raw) || raw.Length > MutationPolicy.MaxReplyChars)
             {
                 return false;
             }
 
             string json = ExtractJson(raw);
-            return json.Contains("\"elements\"") || json.Contains("\"diagram\"") ||
-                   json.Contains("\"removeElementIds\"") || json.Contains("\"removeDiagramNames\"") ||
-                   json.Contains("\"removeElementFromDiagramIds\"");
+            return ChangesKey.IsMatch(json);
         }
 
         public static ArchiMateLlmResult Parse(string? rawResponse)
         {
+            if (rawResponse != null && rawResponse.Length > MutationPolicy.MaxReplyChars)
+            {
+                var oversized = new ArchiMateLlmResult();
+                oversized.Error = "Reply too large to apply as model changes.";
+                return oversized;
+            }
             string json = ExtractJson(rawResponse);
             var result = new ArchiMateLlmResult();
 
@@ -128,10 +136,10 @@ namespace EaGpt
                 diagram.Nodes.Add(new ArchiMateLlmResult.DiagramNodeSpec
                 {
                     ElementId = idM.Groups[1].Value.Trim(),
-                    X = ParseInt(block, "x", 0),
-                    Y = ParseInt(block, "y", 0),
-                    Width = ParseInt(block, "width", 120),
-                    Height = ParseInt(block, "height", 55)
+                    X = ParseCoord(block, "x", 0),
+                    Y = ParseCoord(block, "y", 0),
+                    Width = ParseCoord(block, "width", 120),
+                    Height = ParseCoord(block, "height", 55)
                 });
             });
 
@@ -204,10 +212,20 @@ namespace EaGpt
             }
         }
 
-        private static int ParseInt(string block, string key, int defaultValue)
+        private static int ParseCoord(string block, string key, int defaultValue)
         {
-            Match m = Regex.Match(block, "\"" + key + "\"\\s*:\\s*(-?\\d+)");
-            return m.Success ? int.Parse(m.Groups[1].Value) : defaultValue;
+            Match m = Regex.Match(block, "\"" + key + "\"\\s*:\\s*(-?\\d{1,6})");
+            if (!m.Success || !int.TryParse(m.Groups[1].Value, out int n))
+            {
+                return defaultValue;
+            }
+
+            if (n < 0)
+            {
+                return 0;
+            }
+
+            return n > MutationPolicy.MaxCoord ? MutationPolicy.MaxCoord : n;
         }
 
         private static string ExtractJson(string? raw)
