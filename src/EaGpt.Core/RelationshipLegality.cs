@@ -219,8 +219,9 @@ namespace EaGpt
                     continue;
                 }
 
-                types[e.Id.Trim()] = ArchiMateSchemaValidator.NormalizeElementType(e.Type);
-                names[e.Id.Trim()] = e.Name ?? "";
+                string id = e.Id!.Trim();
+                types[id] = ArchiMateSchemaValidator.NormalizeElementType(e.Type);
+                names[id] = e.Name ?? "";
             }
 
             var errors = new List<string>();
@@ -231,8 +232,10 @@ namespace EaGpt
                     continue;
                 }
 
-                if (!types.TryGetValue(r.Source.Trim(), out string? srcType) ||
-                    !types.TryGetValue(r.Target.Trim(), out string? tgtType) ||
+                string source = r.Source!.Trim();
+                string target = r.Target!.Trim();
+                if (!types.TryGetValue(source, out string? srcType) ||
+                    !types.TryGetValue(target, out string? tgtType) ||
                     string.IsNullOrEmpty(srcType) || string.IsNullOrEmpty(tgtType))
                 {
                     continue;
@@ -243,8 +246,8 @@ namespace EaGpt
                     continue;
                 }
 
-                string srcName = names.TryGetValue(r.Source.Trim(), out string? sn) ? sn : "";
-                string tgtName = names.TryGetValue(r.Target.Trim(), out string? tn) ? tn : "";
+                string srcName = names.TryGetValue(source, out string? sn) ? sn ?? "" : "";
+                string tgtName = names.TryGetValue(target, out string? tn) ? tn ?? "" : "";
                 string rel = ArchiMateSchemaValidator.NormalizeRelationshipType(r.Type);
                 var suggestions = SuggestedTypes(srcType, tgtType);
                 errors.Add(

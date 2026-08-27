@@ -90,10 +90,13 @@ namespace EaGpt
 
             foreach (var e in result.Elements)
             {
-                if (!string.IsNullOrWhiteSpace(e.Id))
+                if (string.IsNullOrWhiteSpace(e.Id))
                 {
-                    types[e.Id.Trim()] = ArchiMateSchemaValidator.NormalizeElementType(e.Type);
+                    continue;
                 }
+
+                string id = e.Id!.Trim();
+                types[id] = ArchiMateSchemaValidator.NormalizeElementType(e.Type);
             }
 
             foreach (var n in result.Diagram.Nodes)
