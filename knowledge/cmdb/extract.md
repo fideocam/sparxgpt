@@ -11,3 +11,5 @@ Format example (CSV is also allowed):
 | db-orders-prod | server | DBA | prod | PostgreSQL |
 
 When the user asks to draw these, reuse the **same names** as ApplicationComponent / Node. Do not invent extra CIs.
+
+For a Finnish authority, start from `cmdb/julkishallinto-inventory.md` (fictional naming style) and replace with the organisation’s real extract: systems, stores, interfaces, and *vastaava viranomainen* — not the supplier as owner.

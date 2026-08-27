@@ -49,5 +49,37 @@ namespace EaGpt.Tests
             int req = msg.IndexOf("User request:", StringComparison.Ordinal);
             Assert.True(xml >= 0 && know > xml && req > know);
         }
+
+        [Fact]
+        public void Retrieve_DefaultPack_FinnishQuery_HitsTiedonhallintaFiles()
+        {
+            string? folder = FindRepoKnowledge();
+            if (folder == null)
+            {
+                return;
+            }
+
+            string text = KnowledgeRetriever.Retrieve(folder, "Kuvaa tiedonhallintamalli tietovarannot ja tekninen rajapinta", 8000);
+            Assert.Contains("COMPANY KNOWLEDGE", text);
+            Assert.Contains("tiedonhallintamalli/", text);
+            Assert.Contains("tietovaranto", text, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string? FindRepoKnowledge()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            for (int i = 0; i < 8 && dir != null; i++)
+            {
+                string candidate = Path.Combine(dir.FullName, "knowledge");
+                if (File.Exists(Path.Combine(candidate, "tiedonhallintamalli", "overview.md")))
+                {
+                    return candidate;
+                }
+
+                dir = dir.Parent;
+            }
+
+            return null;
+        }
     }
 }

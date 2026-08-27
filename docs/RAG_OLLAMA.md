@@ -15,10 +15,10 @@ Keep each file **short, factual, and named by topic**. Prefer Markdown. Do not d
 
 | Collection | Typical files | What the model should learn |
 | --- | --- | --- |
-| **Architecture principles** | `principles/naming.md`, `principles/integration.md`, `principles/security.md` | Naming, reuse, “no direct DB access”, cloud vs on-prem, who owns a capability |
-| **CMDB** | `cmdb/applications.md` or small CSVs of **name, type, owner, environment** | Existing applications, servers, and relations so new diagrams **reuse names** instead of inventing duplicates |
-| **Example ArchiMate** | `examples/business-layer.md`, `examples/application-layer.md`, `examples/technology-deployment.md`, `examples/motivation.md`, `examples/implementation-migration.md` | Required viewpoints, typical element sets, “a deployment view uses Node, Device, CommunicationNetwork, Assignment/Serving” |
-| **Tiedonhallintamalli** | `tiedonhallintamalli/tietovarannot.md`, `kasittelytarkoitukset.md`, `vastuut.md`, `rajapinnat.md` | Finnish information-management model: data stores, purposes of processing, owners, systems, interfaces — so generated views match how the organisation documents information (tiedonhallintalaki-style structure, not a legal opinion) |
+| **Architecture principles** | `principles/architecture-principles.md`, `principles/julkishallinto-ka.md` | Naming, reuse, no silent DB-to-DB access, once-only, 5 § owners, JHS 179 as method |
+| **CMDB** | `cmdb/extract.md`, `cmdb/julkishallinto-inventory.md`, or small CSVs of **name, type, owner, environment** | Existing applications, stores, and relations so new diagrams **reuse names** instead of inventing duplicates; Finnish authorities name *vastaava viranomainen*, not the supplier |
+| **Example ArchiMate** | `examples/business-layer.md`, `examples/application-layer.md`, `examples/technology-deployment.md`, `examples/motivation.md`, `examples/implementation-migration.md`, `examples/tiedonhallintamalli-archimate.md` | Required viewpoints, typical element sets, “a deployment view uses Node, Device, CommunicationNetwork, Assignment/Serving” |
+| **Tiedonhallintamalli** | `tiedonhallintamalli/overview.md` plus 5 § topic files (`toimintaprosessit`, `tietovarannot`, `kasittelytarkoitukset`, `tietoaineistot`, `tietojarjestelmat`, `rajapinnat`, `vastuut`, `muutosvaikutukset`, `asiakirjajulkisuuskuvaus`, `yhteentoimivuus`) | Act 906/2019 **5 §** minimum set (processes, stores, materials/archive, systems + transfer mode), 28 § public extract, tekninen rajapinta vs katseluyhteys — modelling aid, **not** a legal opinion |
 
 **CMDB rule:** export a **curated extract** (applications + technical services + owners), not every CI. Refresh the extract on a schedule.
 

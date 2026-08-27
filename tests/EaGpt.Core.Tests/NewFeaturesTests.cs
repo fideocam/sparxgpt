@@ -219,6 +219,8 @@ namespace EaGpt.Tests
         [InlineData("liiketoiminta näkymä", "business")]
         [InlineData("sovellus landscape", "application")]
         [InlineData("tietovaranto inventory", "tiedonhallinta")]
+        [InlineData("tiedonhallintamalli 5 pykala", "tiedonhallinta")]
+        [InlineData("tekninen rajapinta viranomaisten valilla", "tiedonhallinta")]
         [InlineData("migration plateau", "implementation")]
         [InlineData("capability map", "motivation")]
         public void Viewpoint_Aliases(string prompt, string name)
@@ -235,6 +237,19 @@ namespace EaGpt.Tests
             string text = ViewpointCatalog.FormatForPrompt("just chatting");
             Assert.Contains("VIEWPOINT RECIPES available", text);
             Assert.DoesNotContain("VIEWPOINT RECIPE (", text);
+        }
+
+        [Fact]
+        public void Tiedonhallinta_Recipe_CoversFiveSectionObjects()
+        {
+            string text = ViewpointCatalog.FormatForPrompt("tiedonhallintamalli");
+            Assert.Contains("VIEWPOINT RECIPE (tiedonhallinta)", text);
+            Assert.Contains("Toimintaprosessit", text);
+            Assert.Contains("Tietovarannot", text);
+            Assert.Contains("Tietoaineistot", text);
+            Assert.Contains("Tietojärjestelmät", text);
+            Assert.Contains("tekninen rajapinta", text);
+            Assert.Contains("not legal advice", text);
         }
 
         [Fact]

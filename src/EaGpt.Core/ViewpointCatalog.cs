@@ -43,9 +43,18 @@ namespace EaGpt
             new Recipe("implementation", new[] { "implementation", "migration", "plateau", "work package", "roadmap" },
                 "Typical elements: WorkPackage, Deliverable, ImplementationEvent, Plateau, Gap, plus the core elements a plateau represents.\n" +
                 "Typical relationships: Realization (work package/plateau → architecture), Triggering (events), Association to gaps."),
-            new Recipe("tiedonhallinta", new[] { "tiedonhallinta", "tietovaranto", "tietojärjestelmä", "information management", "data store" },
-                "Cover: named stores (DataObject / Artifact), processing purpose (Goal/Requirement or BusinessProcess), responsibilities (BusinessActor/Role), systems (ApplicationComponent), interfaces (ApplicationInterface, Serving/Flow/Access).\n" +
-                "Reuse CMDB names. Create new elements when a store is missing from the XML; do not invent existing ids.")
+            new Recipe("tiedonhallinta", new[]
+                {
+                    "tiedonhallintamalli", "tiedonhallinta", "tietovaranto", "tietoaineisto", "toimintaprosessi",
+                    "tietojärjestelmä", "tekninen rajapinta", "katseluyhteys", "asiakirjajulkisuuskuvaus",
+                    "information management", "data store"
+                },
+                "Finnish tiedonhallintamalli (Act 906/2019 5 § modelling aid, not legal advice). Cover all four minimum sets:\n" +
+                "1) Toimintaprosessit → BusinessProcess + BusinessRole (vastaava viranomainen), purpose in notes, Triggering/Flow to other processes.\n" +
+                "2) Tietovarannot → DataObject (Grouping if needed); link Access to processes and Serving/Access to systems; purpose, tietoryhmät, luovutuskohteet, retention in notes or Constraint; reuse yhteinen tietovaranto (once-only) instead of duplicating collection.\n" +
+                "3) Tietoaineistot → DataObject/BusinessObject with archive transfer or destruction (Constraint/notes).\n" +
+                "4) Tietojärjestelmät → ApplicationComponent + owner role + ApplicationInterface; prefer tekninen rajapinta (Serving/Flow) between authorities; name katseluyhteys explicitly if it is a view connection.\n" +
+                "New systems: add a short muutosvaikutusten arviointi note (security, disclosure, asianhallinta, julkisuus, interoperability). Asiakirjajulkisuuskuvaus is a thinner public extract (28 §), not a substitute for the full model. Reuse CMDB names; do not invent existing ids.")
         };
 
         public static Recipe? Match(string? prompt)

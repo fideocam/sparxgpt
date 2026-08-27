@@ -40,7 +40,7 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `src/EaGpt.Core` — Ollama client, system prompt, JSON parser/validator, ArchiMate type map (testable on Linux)
 - `src/EaGpt.AddIn` — .NET Framework 4.8 COM add-in, WinForms chat, EA Automation importer
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
-- `knowledge/` — template pack (principles, CMDB extract, ArchiMate examples, tiedonhallintamalli)
+- `knowledge/` — template pack (Finnish 5 § tiedonhallintamalli, KA principles, CMDB extract, ArchiMate examples)
 - `docs/` — install, security, RAG, [open-source landscape](docs/ARCHIMATE_AI_LANDSCAPE.md), [commercial alternatives](docs/COMMERCIAL_ALTERNATIVES.md)
 - `scripts/install.ps1` / `uninstall.ps1`
 
