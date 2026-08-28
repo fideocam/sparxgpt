@@ -2,7 +2,7 @@
 
 EaGPT is a Windows COM add-in for Sparx Enterprise Architect.
 
-- **Build** (Visual Studio): [BUILD_WINDOWS.md](BUILD_WINDOWS.md)
+- **Build** (VS Code or Visual Studio): [BUILD_WINDOWS.md](BUILD_WINDOWS.md)
 - **Install and use in EA**: [INSTALL_SPARX.md](INSTALL_SPARX.md)
 - **Security**: [SECURITY.md](SECURITY.md)
 

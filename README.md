@@ -23,7 +23,7 @@ Ideas taken from public ArchiMate MCP / AI projects and from commercial EA assis
 
 Windows + Sparx EA required. Two separate guides:
 
-- **[Build with Visual Studio](docs/BUILD_WINDOWS.md)** — workloads, open `EaGpt.sln`, Release DLL
+- **[Build on Windows](docs/BUILD_WINDOWS.md)** — VS Code or Visual Studio; install the **.NET 8 SDK**, open the folder that contains `EaGpt.sln`, `Ctrl+Shift+B` or `dotnet build`
 - **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — `regasm`, EA add-in key, first use, uninstall
 - **[RAG / company knowledge](docs/RAG_OLLAMA.md)** — principles, CMDB, ArchiMate examples, tiedonhallintamalli with Ollama
 
