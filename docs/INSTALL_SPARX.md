@@ -15,8 +15,7 @@ The add-in is a .NET Framework 4.8 COM object. Register it on the **same Windows
   ollama pull llama3.2
   ```
 
-- A built add-in: `src\EaGpt.AddIn\bin\Release\net48\EaGpt.AddIn.dll`  
-  (from [BUILD_WINDOWS.md](BUILD_WINDOWS.md), or produced by `scripts\install.ps1` which builds if the SDK is present)
+- A built add-in in **`release\`** (from [BUILD_WINDOWS.md](BUILD_WINDOWS.md) / `.\scripts\build.ps1`), or the promoted **`stable\`** drop. Recipients of a copied folder only need that folder’s `Install.ps1` — no SDK.
 
 Enable the **ArchiMate 3** MDG in EA: **Specialize → Manage Technologies** (or **Configure → Manage Technologies** on some EA versions) and tick **ArchiMate 3**.
 
@@ -36,11 +35,13 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 The script:
 
-1. Builds Release if `dotnet` is available
-2. Runs 64-bit `regasm.exe /codebase` on `EaGpt.AddIn.dll`
+1. Runs `scripts\build.ps1` (Release → `release\`) if `dotnet` is available
+2. Runs 64-bit `regasm.exe /codebase` on `release\EaGpt.AddIn.dll`
 3. Writes the EA add-in key:
 
    `HKCU\Software\Sparx Systems\EAAddins\EaGPT` = `EaGpt.AddIn.EaGptAddIn`
+
+Register a promoted user drop: `.\scripts\install.ps1 -Channel stable` (build it first with `.\scripts\build.ps1 -PromoteToStable`).
 
 You should see a line that the add-in is registered, then: restart EA and use **EaGPT → Show EaGPT View**.
 
@@ -56,24 +57,21 @@ The DLL must have been built as x86 (see [BUILD_WINDOWS.md](BUILD_WINDOWS.md)).
 
 ### Already built, no Visual Studio on this PC
 
-`install.ps1` still needs `dotnet` to build. If you copied a Release `net48` folder from a build machine:
+Copy the **`release\`** or **`stable\`** folder (or unzip `EaGPT.zip`) to a path that will not change, then:
 
-1. Put `EaGpt.AddIn.dll` and `EaGpt.Core.dll` together (keep the path stable; `/codebase` records it).
-2. Register COM (64-bit EA):
+```powershell
+cd C:\EaGPT\release
+Set-ExecutionPolicy -Scope Process Bypass
+.\Install.ps1
+```
 
-   ```powershell
-   & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\regasm.exe" `
-     "C:\path\to\net48\EaGpt.AddIn.dll" /codebase /tlb
-   ```
+That registers COM from the DLLs in the same folder. Do not move the folder after install without running `Install.ps1` again.
 
-3. Register the add-in name for the current user:
+To skip compiling on a machine that already has `release\`:
 
-   ```powershell
-   New-Item -Path "HKCU:\Software\Sparx Systems\EAAddins\EaGPT" -Force | Out-Null
-   Set-ItemProperty -Path "HKCU:\Software\Sparx Systems\EAAddins\EaGPT" -Name "(default)" -Value "EaGpt.AddIn.EaGptAddIn"
-   ```
-
-Do not move the DLL after `/codebase` without running registration again.
+```powershell
+.\scripts\install.ps1 -SkipBuild
+```
 
 ## 3. Enable it in EA
 

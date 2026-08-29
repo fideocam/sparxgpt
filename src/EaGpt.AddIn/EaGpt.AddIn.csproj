@@ -21,4 +21,18 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
+  <Target Name="StageShareRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <ShareReleaseDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\release'))</ShareReleaseDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(ShareReleaseDir)" />
+    <ItemGroup>
+      <_ShareBin Include="$(TargetDir)EaGpt.AddIn.dll" />
+      <_ShareBin Include="$(TargetDir)EaGpt.Core.dll" />
+      <_ShareScripts Include="$(MSBuildThisFileDirectory)..\..\scripts\share\Install.ps1" />
+      <_ShareScripts Include="$(MSBuildThisFileDirectory)..\..\scripts\share\Uninstall.ps1" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ShareBin)" DestinationFolder="$(ShareReleaseDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ShareScripts)" DestinationFolder="$(ShareReleaseDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

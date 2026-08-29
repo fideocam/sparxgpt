@@ -46,14 +46,24 @@ Any of these:
 
 ```powershell
 cd path\to\sparxgpt
+.\scripts\build.ps1
+```
+
+That compiles **Release** and copies a shareable drop into `release\` (DLLs + `Install.ps1` + `EaGPT.zip`). Intermediate output is still under `src\EaGpt.AddIn\bin\Release\net48\`.
+
+Equivalent without the script:
+
+```powershell
 dotnet restore EaGpt.sln
 dotnet build src\EaGpt.AddIn\EaGpt.AddIn.csproj -c Release
 ```
 
-Output DLL:
+Shareable add-in (send this folder or `release\EaGPT.zip` to users):
 
 ```
-src\EaGpt.AddIn\bin\Release\net48\EaGpt.AddIn.dll
+release\EaGpt.AddIn.dll
+release\EaGpt.Core.dll
+release\Install.ps1
 ```
 
 If VS Code says there is **no build task**, the `.vscode` folder from this repo is missing — open the GitHub clone, not a copy of only the Markdown files.
@@ -71,10 +81,20 @@ If VS Code says there is **no build task**, the `.vscode` folder from this repo 
 
 | Output | Path |
 | --- | --- |
-| Add-in DLL (this is what EA loads) | `src\EaGpt.AddIn\bin\Release\net48\EaGpt.AddIn.dll` |
-| Core library (copied next to the DLL) | `src\EaGpt.AddIn\bin\Release\net48\EaGpt.Core.dll` |
+| Shareable drop (send this to users) | `release\` (`EaGpt.AddIn.dll`, `EaGpt.Core.dll`, `Install.ps1`, `EaGPT.zip`) |
+| Promoted user drop | `stable\` — `.\scripts\build.ps1 -PromoteToStable` |
+| Intermediate build | `src\EaGpt.AddIn\bin\Release\net48\` |
 
 You do **not** need Sparx’s `Interop.EA.dll`. The add-in talks to EA through late-bound COM.
+
+## Share with users
+
+| Folder | Meaning |
+| --- | --- |
+| `release\` | Current Release drop — refreshed on every `.\scripts\build.ps1` |
+| `stable\` | Last promoted drop — `.\scripts\build.ps1 -PromoteToStable` |
+
+Each folder is self-contained: DLLs, `Install.ps1`, `Uninstall.ps1`, `VERSION.txt`, `EaGPT.zip`. Copy the folder or send the zip. On the EA PC, run that folder’s `Install.ps1` (no SDK).
 
 ## Visual Studio 2022 (optional)
 
@@ -132,22 +152,21 @@ EA should load the Release DLL unless you are debugging.
 2. **Build → Rebuild Solution** (or press `Ctrl+Shift+B` after a Clean).
 3. Confirm the Output window ends with **Build succeeded**.
 
-The add-in DLL is:
+The add-in for sharing is **`release\`** (and `release\EaGPT.zip`). Keep `EaGpt.AddIn.dll` and `EaGpt.Core.dll` together. Intermediate output remains:
 
 ```
-src\EaGpt.AddIn\bin\Release\net48\EaGpt.AddIn.dll
+src\EaGpt.AddIn\bin\Release\net48\
 ```
-
-Copy that whole `net48` folder if you move the build to another machine. Keep `EaGpt.AddIn.dll` and `EaGpt.Core.dll` together.
 
 ### Command line (same result)
 
 From **Developer PowerShell for VS 2022**, in the repo root:
 
 ```powershell
-dotnet restore EaGpt.sln
-dotnet build src\EaGpt.AddIn\EaGpt.AddIn.csproj -c Release
+.\scripts\build.ps1
 ```
+
+That also fills `release\`. A Visual Studio Rebuild of **EaGpt.AddIn** (Release) copies the DLLs into `release\` as well.
 
 ### Run the unit tests (optional)
 
@@ -174,10 +193,9 @@ In Visual Studio:
 Or from Developer PowerShell:
 
 ```powershell
-dotnet build src\EaGpt.AddIn\EaGpt.AddIn.csproj -c Release -p:PlatformTarget=x86
+.\scripts\build.ps1 -X86
+.\scripts\install.ps1 -X86
 ```
-
-Then use `.\scripts\install.ps1 -X86` as described in [INSTALL_SPARX.md](INSTALL_SPARX.md).
 
 ## Typical build problems
 
@@ -187,6 +205,6 @@ Then use `.\scripts\install.ps1 -X86` as described in [INSTALL_SPARX.md](INSTALL
 | `net48` targeting pack missing | Visual Studio Installer → Individual components → **.NET Framework 4.8 targeting pack**. |
 | WinForms / `System.Windows.Forms` errors | Enable **.NET desktop development**. `EaGpt.AddIn` sets `UseWindowsForms`. |
 | Restore cannot reach nuget.org | Check proxy/firewall; restore `Microsoft.NETFramework.ReferenceAssemblies.net48`. |
-| Built DLL is in `bin\Debug` | Switch configuration to **Release** and rebuild before installing into EA. |
+| Built DLL is in `bin\Debug` | Debug is the default for bare `dotnet build`. Run `.\scripts\build.ps1` (Release) so files land in `release\`. |
 
 Building does **not** register the add-in. Continue with [INSTALL_SPARX.md](INSTALL_SPARX.md).

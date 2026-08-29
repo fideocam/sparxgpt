@@ -11,6 +11,16 @@
         "-c",
         "Release"
       ],
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/scripts/build.ps1"
+        ]
+      },
       "group": {
         "kind": "build",
         "isDefault": true
@@ -20,6 +30,20 @@
         "reveal": "always",
         "panel": "shared"
       }
+    },
+    {
+      "label": "promote to stable",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/build.ps1",
+        "-PromoteToStable"
+      ],
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "build solution (Release)",

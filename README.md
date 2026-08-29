@@ -23,17 +23,18 @@ Ideas taken from public ArchiMate MCP / AI projects and from commercial EA assis
 
 Windows + Sparx EA required. Two separate guides:
 
-- **[Build on Windows](docs/BUILD_WINDOWS.md)** — VS Code or Visual Studio; install the **.NET 8 SDK**, open the folder that contains `EaGpt.sln`, `Ctrl+Shift+B` or `dotnet build`
+- **[Build on Windows](docs/BUILD_WINDOWS.md)** — VS Code or Visual Studio; `.\scripts\build.ps1` fills `release\`
 - **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — `regasm`, EA add-in key, first use, uninstall
 - **[RAG / company knowledge](docs/RAG_OLLAMA.md)** — principles, CMDB, ArchiMate examples, tiedonhallintamalli with Ollama
 
-If you already have Visual Studio and `dotnet` on the EA machine:
+If you already have the .NET SDK on the EA machine:
 
 ```powershell
+.\scripts\build.ps1
 .\scripts\install.ps1
 ```
 
-Then in EA: **EaGPT → Show EaGPT View**.
+That fills **`release\`** (share that folder or `release\EaGPT.zip`). Snapshot a user drop with `.\scripts\build.ps1 -PromoteToStable` (`stable\`). Then in EA: **EaGPT → Show EaGPT View**.
 
 ## Repository layout
 
@@ -42,7 +43,8 @@ Then in EA: **EaGPT → Show EaGPT View**.
 - `tests/EaGpt.Core.Tests` — unit tests for the protocol layer
 - `knowledge/` — template pack (Finnish 5 § tiedonhallintamalli, KA principles, CMDB extract, ArchiMate examples)
 - `docs/` — install, security, RAG, [open-source landscape](docs/ARCHIMATE_AI_LANDSCAPE.md), [commercial alternatives](docs/COMMERCIAL_ALTERNATIVES.md)
-- `scripts/install.ps1` / `uninstall.ps1`
+- `release/` / `stable/` — shareable add-in drops (`build.ps1` fills them)
+- `scripts/build.ps1`, `install.ps1`, `uninstall.ps1`
 
 ## Tests
 
