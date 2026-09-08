@@ -36,7 +36,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 The script:
 
 1. Runs `scripts\build.ps1` (Release → `release\`) if `dotnet` is available
-2. Runs 64-bit `regasm.exe /codebase` on `release\EaGpt.AddIn.dll`
+2. Registers the DLL as **per-user COM** under `HKCU\Software\Classes` (no Administrator `regasm /codebase`)
 3. Writes the EA add-in key:
 
    `HKCU\Software\Sparx Systems\EAAddins\EaGPT` = `EaGpt.AddIn.EaGptAddIn`
@@ -86,7 +86,7 @@ A window titled **EaGPT** should open (Ollama URL, model list, chat).
 If the **EaGPT** menu is missing:
 
 - Confirm the registry value exists (step 2).
-- Confirm 64-bit vs 32-bit match (EA bitness, `regasm`, DLL `PlatformTarget`).
+- Confirm 64-bit vs 32-bit match (EA bitness, COM hive, DLL `PlatformTarget`).
 - Look at EA’s add-in list for a load error.
 - Rebuild Release and run `install.ps1` again after closing EA.
 
@@ -142,12 +142,12 @@ Restart EA. The **EaGPT** menu should be gone.
 | Symptom | What to check |
 | --- | --- |
 | No EaGPT menu | Registry key, add-in enabled, EA restarted, 32/64-bit match. |
-| “Retrieving the COM class factory failed” | `regasm /codebase` was not run, or the DLL moved. Re-run `install.ps1`. |
+| “Retrieving the COM class factory failed” | Per-user COM was not registered, or the DLL moved. Re-run `install.ps1`. |
 | BadImageFormatException | 32-bit EA with an x64 DLL (or the reverse). Rebuild and `install.ps1 -X86` if needed. |
 | Test cannot reach Ollama | Ollama is running; URL is `http://localhost:11434` or a LAN address; on a LAN host set `OLLAMA_HOST=0.0.0.0` and open firewall TCP 11434. Try `ollama list` on the server. |
 | Model list empty | Pull a model (`ollama pull llama3.2`), then **Refresh list**. |
 | Changes not applied | Reply may be analysis (plain text). For adds, the model must return JSON. ArchiMate 3 MDG must be enabled. Open a package as the create target. |
 | Elements have the wrong type | Enable ArchiMate 3 MDG; types are `ArchiMate3::ArchiMate_…`. |
-| Access denied on `regasm` | You do not need Administrator for HKCU. If `regasm` itself fails, run PowerShell normally (not redirected to a protected folder). |
+| Access denied on install | You do not need Administrator. Install writes only `HKCU`. Run PowerShell as the same Windows user who starts EA. |
 
 More on URLs, confirmation prompts, and residual LLM risks: [SECURITY.md](SECURITY.md).

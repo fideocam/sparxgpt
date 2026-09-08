@@ -25,7 +25,7 @@ Ideas taken from public ArchiMate MCP / AI projects and from commercial EA assis
 Windows + Sparx EA required. Two separate guides:
 
 - **[Build on Windows](docs/BUILD_WINDOWS.md)** — VS Code or Visual Studio; `.\scripts\build.ps1` fills `release\`
-- **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — `regasm`, EA add-in key, first use, uninstall
+- **[Install in Sparx EA](docs/INSTALL_SPARX.md)** — per-user COM (no admin `regasm`), EA add-in key, first use, uninstall
 - **[RAG / company knowledge](docs/RAG_OLLAMA.md)** — principles, CMDB, ArchiMate examples, tiedonhallintamalli with Ollama
 
 If you already have the .NET SDK on the EA machine:

@@ -23,4 +23,4 @@ Then copy or zip **this whole folder** (or send `EaGPT.zip`). Recipients do **no
 
 4. Restart EA → **EaGPT → Show EaGPT View**.
 
-Uninstall: `.\Uninstall.ps1` (close EA first). 32-bit EA: `.\Install.ps1 -X86`.
+Uninstall: `.\Uninstall.ps1` (close EA first). 32-bit EA: `.\Install.ps1 -X86`. No Administrator prompt; registration is HKCU-only.

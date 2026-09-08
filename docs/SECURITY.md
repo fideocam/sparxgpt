@@ -12,7 +12,7 @@ This document is the threat model and the controls that are in place. It is not 
 | Chat prompt | The EA user |
 | LLM URL / model name | The EA user, plus `%AppData%\EaGpt\settings.ini` |
 | LLM reply | The selected local (or user-configured) model |
-| COM add-in process | The Windows user who registered `/codebase` |
+| COM add-in process | The Windows user who registered per-user COM |
 
 The LLM is **not** trusted. Parser, schema, and mutation-policy checks run before EA COM writes.
 
@@ -58,7 +58,7 @@ Element/relationship/diagram names are XML-escaped. Control characters are strip
 1. **Prompt injection via model content.** Names and notes in the EA project are sent to the LLM. A planted name can try to make the model emit change JSON. Mitigation: schema + limits + delete confirmation. **Adds still apply without a second prompt** if they validate. Review the chat transcript before continuing if the model is untrusted.
 2. **SSRF to the LAN.** A user (or a tampered `settings.ini`) can point EaGPT at any http(s) host except the blocked metadata addresses. That is required for a networked Ollama box. Do not paste untrusted URLs into the Ollama field. Requests do not use `HTTP_PROXY`.
 3. **DNS rebinding / newly registered names.** Hostname allowlisting is not used. Bind Ollama to localhost when you can.
-4. **Unsigned COM `/codebase`.** `install.ps1` registers the DLL for the current user. Only load a build you compiled or otherwise trust.
+4. **Unsigned per-user COM.** `install.ps1` registers the DLL under `HKCU\Software\Classes` for the current user (no machine-wide `regasm`). Only load a build you compiled or otherwise trust.
 5. **The LLM sees the model digest.** Treat the local model like any other process that can read the open architecture. Do not point EaGPT at a public hosted LLM unless that is acceptable. There is no API-key UI; use Ollama or LM Studio on the LAN.
 6. **No EA COM tests in CI.** Linux CI covers `EaGpt.Core` only. The WinForms/COM importer is reviewed, not executed here.
 

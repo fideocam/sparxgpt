@@ -4,18 +4,21 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$dir = $PSScriptRoot
-$dll = Join-Path $dir "EaGpt.AddIn.dll"
+$progId = "EaGpt.AddIn.EaGptAddIn"
+$clsid = "{B7C4A1E2-3F58-4D9A-9C2B-8E1D6A0F4B31}"
 
-$framework = if ($X86) { "Framework" } else { "Framework64" }
-$regasm = Join-Path $env:WINDIR "Microsoft.NET\$framework\v4.0.30319\regasm.exe"
-if ((Test-Path $regasm) -and (Test-Path $dll)) {
-    & $regasm $dll /unregister
+function Remove-KeyIfPresent([string]$Path) {
+    if (Test-Path -LiteralPath $Path) {
+        Remove-Item -LiteralPath $Path -Recurse -Force
+    }
 }
+
+# Per-user COM (do not call regasm /unregister — that writes HKLM and needs admin).
+Remove-KeyIfPresent "HKCU:\Software\Classes\CLSID\$clsid"
+Remove-KeyIfPresent "HKCU:\Software\Classes\Wow6432Node\CLSID\$clsid"
+Remove-KeyIfPresent "HKCU:\Software\Classes\$progId"
 
 $regPath = "HKCU:\Software\Sparx Systems\EAAddins\EaGPT"
-if (Test-Path $regPath) {
-    Remove-Item -Path $regPath -Recurse -Force
-}
+Remove-KeyIfPresent $regPath
 
-Write-Host "EaGPT unregistered. Restart Enterprise Architect."
+Write-Host "EaGPT unregistered for this Windows user. Restart Enterprise Architect."
