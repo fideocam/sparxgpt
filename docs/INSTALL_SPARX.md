@@ -37,9 +37,11 @@ The script:
 
 1. Runs `scripts\build.ps1` (Release → `release\`) if `dotnet` is available
 2. Registers the DLL as **per-user COM** under `HKCU\Software\Classes` (no Administrator `regasm /codebase`)
-3. Writes the EA add-in key:
+3. Writes the EA add-in keys (32-bit EA and 64-bit EA respectively):
 
    `HKCU\Software\Sparx Systems\EAAddins\EaGPT` = `EaGpt.AddIn.EaGptAddIn`
+
+   `HKCU\Software\Sparx Systems\EAAddins64\EaGPT` = `EaGpt.AddIn.EaGptAddIn`
 
 Register a promoted user drop: `.\scripts\install.ps1 -Channel stable` (build it first with `.\scripts\build.ps1 -PromoteToStable`).
 
@@ -85,7 +87,7 @@ A window titled **EaGPT** should open (Ollama URL, model list, chat).
 
 If the **EaGPT** menu is missing:
 
-- Confirm the registry value exists (step 2).
+- Confirm the registry value exists (step 2). 64-bit EA reads `EAAddins64`; 32-bit EA reads `EAAddins`.
 - Confirm 64-bit vs 32-bit match (EA bitness, COM hive, DLL `PlatformTarget`).
 - Look at EA’s add-in list for a load error.
 - Rebuild Release and run `install.ps1` again after closing EA.
@@ -141,7 +143,7 @@ Restart EA. The **EaGPT** menu should be gone.
 
 | Symptom | What to check |
 | --- | --- |
-| No EaGPT menu | Registry key, add-in enabled, EA restarted, 32/64-bit match. |
+| No EaGPT menu | `EAAddins` vs `EAAddins64`, add-in enabled, EA restarted, 32/64-bit COM match. |
 | “Retrieving the COM class factory failed” | Per-user COM was not registered, or the DLL moved. Re-run `install.ps1`. |
 | BadImageFormatException | 32-bit EA with an x64 DLL (or the reverse). Rebuild and `install.ps1 -X86` if needed. |
 | Test cannot reach Ollama | Ollama is running; URL is `http://localhost:11434` or a LAN address; on a LAN host set `OLLAMA_HOST=0.0.0.0` and open firewall TCP 11434. Try `ollama list` on the server. |

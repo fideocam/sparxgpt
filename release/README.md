@@ -6,7 +6,7 @@ This folder is the **shareable add-in** produced by `.\scripts\build.ps1`. Zip o
 | --- | --- |
 | `EaGpt.AddIn.dll` | COM add-in EA loads |
 | `EaGpt.Core.dll` | Must stay next to the add-in |
-| `Install.ps1` | Register per-user COM and the EA add-in key (no admin) |
+| `Install.ps1` | Register per-user COM and `EAAddins` / `EAAddins64` (no admin) |
 | `Uninstall.ps1` | Unregister |
 | `VERSION.txt` | Build stamp (written by the build script) |
 | `EaGPT.zip` | Same files, for email / file share |

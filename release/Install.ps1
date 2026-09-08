@@ -100,9 +100,12 @@ function Register-PerUserCom {
 }
 
 function Register-EaAddin {
-    $regPath = "HKCU:\Software\Sparx Systems\EAAddins\EaGPT"
-    Set-DefaultValue $regPath $progId
-    Write-Host "Registered HKCU\Software\Sparx Systems\EAAddins\EaGPT = $progId"
+    # 32-bit EA reads EAAddins; 64-bit EA reads EAAddins64 only.
+    foreach ($name in @("EAAddins", "EAAddins64")) {
+        $regPath = "HKCU:\Software\Sparx Systems\$name\EaGPT"
+        Set-DefaultValue $regPath $progId
+        Write-Host "Registered HKCU\Software\Sparx Systems\$name\EaGPT = $progId"
+    }
 }
 
 $bitness = if ($X86) { "32-bit" } else { "64-bit" }

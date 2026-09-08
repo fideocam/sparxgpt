@@ -47,7 +47,8 @@ foreach ($path in @(
         "HKCU:\Software\Classes\CLSID\$clsid",
         "HKCU:\Software\Classes\Wow6432Node\CLSID\$clsid",
         "HKCU:\Software\Classes\$progId",
-        "HKCU:\Software\Sparx Systems\EAAddins\EaGPT"
+        "HKCU:\Software\Sparx Systems\EAAddins\EaGPT",
+        "HKCU:\Software\Sparx Systems\EAAddins64\EaGPT"
     )) {
     if (Test-Path -LiteralPath $path) {
         Remove-Item -LiteralPath $path -Recurse -Force

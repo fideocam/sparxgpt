@@ -18,7 +18,8 @@ Remove-KeyIfPresent "HKCU:\Software\Classes\CLSID\$clsid"
 Remove-KeyIfPresent "HKCU:\Software\Classes\Wow6432Node\CLSID\$clsid"
 Remove-KeyIfPresent "HKCU:\Software\Classes\$progId"
 
-$regPath = "HKCU:\Software\Sparx Systems\EAAddins\EaGPT"
-Remove-KeyIfPresent $regPath
+foreach ($name in @("EAAddins", "EAAddins64")) {
+    Remove-KeyIfPresent "HKCU:\Software\Sparx Systems\$name\EaGPT"
+}
 
 Write-Host "EaGPT unregistered for this Windows user. Restart Enterprise Architect."
