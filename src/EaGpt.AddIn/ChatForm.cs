@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -21,8 +22,14 @@ namespace EaGpt.AddIn
         private readonly TextBox _promptBox = new TextBox();
         private readonly Button _askButton = new Button();
         private readonly Button _stopButton = new Button();
+        private readonly Button _clearButton = new Button();
+        private readonly ComboBox _starterBox = new ComboBox();
         private readonly TextBox _debugBox = new TextBox();
         private readonly TabControl _tabs = new TabControl();
+        private readonly CheckBox _useModelMaxBox = new CheckBox();
+        private readonly NumericUpDown _numCtxBox = new NumericUpDown();
+        private readonly Label _ctxStatusLabel = new Label();
+        private readonly List<ChatTurn> _history = new List<ChatTurn>();
 
         private CancellationTokenSource? _cts;
 
@@ -45,12 +52,12 @@ namespace EaGpt.AddIn
                 WrapContents = false,
                 Padding = new Padding(6, 4, 6, 0)
             };
-            top.Controls.Add(new Label { Text = "Ollama", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
+            top.Controls.Add(new Label { Text = "LLM", AutoSize = true, Padding = new Padding(0, 8, 0, 0) });
             _urlBox.Width = 220;
             _urlBox.Text = _settings.OllamaBaseUrl;
             var tip = new ToolTip();
             tip.SetToolTip(_urlBox,
-                "Ollama API URL. This PC: http://localhost:11434. Another machine on the LAN: http://192.168.1.10:11434 or just 192.168.1.10. That host must listen on the network (OLLAMA_HOST=0.0.0.0).");
+                "LLM API URL. Ollama: http://localhost:11434. LM Studio: http://localhost:1234. Another machine: http://192.168.1.10:11434 or just 192.168.1.10. That host must listen on the network (OLLAMA_HOST=0.0.0.0).");
             top.Controls.Add(_urlBox);
             top.Controls.Add(new Label { Text = "Model", AutoSize = true, Padding = new Padding(8, 8, 0, 0) });
             _modelBox.Width = 160;
@@ -68,6 +75,7 @@ namespace EaGpt.AddIn
 
             _tabs.Dock = DockStyle.Fill;
             var chatPage = new TabPage("Chat");
+            var serverPage = new TabPage("Server");
             var debugPage = new TabPage("Debug");
 
             _responseBox.Dock = DockStyle.Fill;
@@ -75,7 +83,19 @@ namespace EaGpt.AddIn
             _responseBox.BackColor = Color.White;
             _responseBox.Font = new Font("Consolas", 9.75F);
 
-            var bottom = new Panel { Dock = DockStyle.Bottom, Height = 110 };
+            var bottom = new Panel { Dock = DockStyle.Bottom, Height = 138 };
+            _starterBox.Dock = DockStyle.Top;
+            _starterBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _starterBox.Items.Add("(example prompts)");
+            _starterBox.Items.Add("Describe the open diagram");
+            _starterBox.Items.Add("Audit this model for quality issues");
+            _starterBox.Items.Add("What depends on the selected element?");
+            _starterBox.Items.Add("Find application components named like the selection");
+            _starterBox.Items.Add("Create a business layer view of the current selection");
+            _starterBox.Items.Add("Add missing application services for the selected process");
+            _starterBox.SelectedIndex = 0;
+            _starterBox.SelectedIndexChanged += StarterPicked;
+
             _promptBox.Multiline = true;
             _promptBox.Dock = DockStyle.Fill;
             _promptBox.AcceptsReturn = true;
@@ -95,13 +115,20 @@ namespace EaGpt.AddIn
             _stopButton.Width = 100;
             _stopButton.Enabled = false;
             _stopButton.Click += (_, __) => _cts?.Cancel();
+            _clearButton.Text = "Clear chat";
+            _clearButton.Width = 100;
+            _clearButton.Click += (_, __) => ClearChat();
             buttons.Controls.Add(_askButton);
             buttons.Controls.Add(_stopButton);
-            bottom.Controls.Add(_promptBox);
+            buttons.Controls.Add(_clearButton);
             bottom.Controls.Add(buttons);
+            bottom.Controls.Add(_starterBox);
+            bottom.Controls.Add(_promptBox);
 
             chatPage.Controls.Add(_responseBox);
             chatPage.Controls.Add(bottom);
+
+            serverPage.Controls.Add(BuildServerPage());
 
             _debugBox.Dock = DockStyle.Fill;
             _debugBox.Multiline = true;
@@ -111,6 +138,7 @@ namespace EaGpt.AddIn
             debugPage.Controls.Add(_debugBox);
 
             _tabs.TabPages.Add(chatPage);
+            _tabs.TabPages.Add(serverPage);
             _tabs.TabPages.Add(debugPage);
 
             Controls.Add(_tabs);
@@ -135,6 +163,114 @@ namespace EaGpt.AddIn
             };
         }
 
+        private Control BuildServerPage()
+        {
+            var page = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+            var layout = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true
+            };
+
+            var intro = new Label
+            {
+                AutoSize = true,
+                MaximumSize = new Size(640, 0),
+                Text = "Ollama context size (num_ctx). The URL and model on the bar above still apply. "
+                       + "Use model max sends the architecture limit from POST /api/show; uncheck it to type a smaller window."
+            };
+            layout.Controls.Add(intro);
+
+            _useModelMaxBox.Text = "Use model max context";
+            _useModelMaxBox.AutoSize = true;
+            _useModelMaxBox.Checked = _settings.UseModelMaxCtx;
+            _useModelMaxBox.CheckedChanged += (_, __) =>
+            {
+                _numCtxBox.Enabled = !_useModelMaxBox.Checked;
+                UpdateCtxStatus();
+            };
+            layout.Controls.Add(_useModelMaxBox);
+
+            var ctxRow = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = false,
+                Margin = new Padding(0, 8, 0, 0)
+            };
+            ctxRow.Controls.Add(new Label
+            {
+                Text = "Context size",
+                AutoSize = true,
+                Padding = new Padding(0, 6, 8, 0)
+            });
+            _numCtxBox.Minimum = LlmContextConfig.MinNumCtx;
+            _numCtxBox.Maximum = LlmContextConfig.MaxNumCtx;
+            _numCtxBox.Increment = 1024;
+            _numCtxBox.Width = 120;
+            int initialCtx = _settings.NumCtx >= LlmContextConfig.MinNumCtx
+                ? _settings.NumCtx
+                : LlmContextConfig.DefaultReportedCtxCap;
+            if (initialCtx > LlmContextConfig.MaxNumCtx)
+            {
+                initialCtx = LlmContextConfig.MaxNumCtx;
+            }
+
+            _numCtxBox.Value = initialCtx;
+            _numCtxBox.Enabled = !_useModelMaxBox.Checked;
+            _numCtxBox.ValueChanged += (_, __) => UpdateCtxStatus();
+            ctxRow.Controls.Add(_numCtxBox);
+            layout.Controls.Add(ctxRow);
+
+            _ctxStatusLabel.AutoSize = true;
+            _ctxStatusLabel.MaximumSize = new Size(640, 0);
+            _ctxStatusLabel.Padding = new Padding(0, 12, 0, 0);
+            _ctxStatusLabel.ForeColor = Color.DimGray;
+            layout.Controls.Add(_ctxStatusLabel);
+            UpdateCtxStatus();
+
+            page.Controls.Add(layout);
+            return page;
+        }
+
+        private void UpdateCtxStatus()
+        {
+            if (_useModelMaxBox.Checked)
+            {
+                _ctxStatusLabel.Text = "Next request will use the model's reported maximum (clamped to "
+                    + LlmContextConfig.MaxNumCtx + " tokens).";
+            }
+            else
+            {
+                _ctxStatusLabel.Text = "Next request num_ctx=" + (int)_numCtxBox.Value
+                    + " (not above the model's reported maximum when /api/show succeeds).";
+            }
+        }
+
+        private void StarterPicked(object? sender, EventArgs e)
+        {
+            if (_starterBox.SelectedIndex <= 0)
+            {
+                return;
+            }
+
+            string? text = _starterBox.SelectedItem as string;
+            _starterBox.SelectedIndex = 0;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                _promptBox.Text = text;
+                _promptBox.Focus();
+                _promptBox.SelectionStart = text!.Length;
+            }
+        }
+
+        private void ClearChat()
+        {
+            _history.Clear();
+            _responseBox.Clear();
+        }
+
         private void PromptKeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter && !e.Shift)
@@ -144,7 +280,7 @@ namespace EaGpt.AddIn
             }
         }
 
-        private OllamaClient CreateClient()
+        private OllamaClient CreateClient(int? timeoutMs = null)
         {
             PersistSettings();
             if (!OllamaEndpoint.TryNormalize(_urlBox.Text, out string normalized, out string error))
@@ -153,7 +289,7 @@ namespace EaGpt.AddIn
             }
 
             _urlBox.Text = normalized;
-            return new OllamaClient(normalized, _modelBox.Text.Trim(), _settings.TimeoutMs);
+            return new OllamaClient(normalized, _modelBox.Text.Trim(), timeoutMs ?? _settings.TimeoutMs);
         }
 
         private void PersistSettings()
@@ -165,6 +301,8 @@ namespace EaGpt.AddIn
             }
 
             _settings.Model = OllamaClient.SanitizeModelName(_modelBox.Text);
+            _settings.UseModelMaxCtx = _useModelMaxBox.Checked;
+            _settings.NumCtx = LlmContextConfig.ClampNumCtx((int)_numCtxBox.Value);
             try
             {
                 _settings.Save();
@@ -182,7 +320,7 @@ namespace EaGpt.AddIn
                 var client = CreateClient();
                 bool ok = client.CheckConnection();
                 MessageBox.Show(this,
-                    ok ? "Ollama is reachable at " + client.BaseUrl : "Cannot reach Ollama at " + client.BaseUrl,
+                    ok ? client.ApiDisplayName + " is reachable at " + client.BaseUrl : "Cannot reach " + client.BaseUrl,
                     "EaGPT",
                     MessageBoxButtons.OK,
                     ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
@@ -199,21 +337,15 @@ namespace EaGpt.AddIn
             {
                 var client = CreateClient();
                 var names = client.FetchInstalledModelNames();
-                string current = _modelBox.Text;
+                var items = OllamaModelList.FromServerNames(names);
+                string selected = OllamaModelList.SelectionAfterRefresh(items, _modelBox.Text);
                 _modelBox.Items.Clear();
-                foreach (string name in names)
+                foreach (string name in items)
                 {
                     _modelBox.Items.Add(name);
                 }
 
-                if (!string.IsNullOrWhiteSpace(current))
-                {
-                    _modelBox.Text = current;
-                }
-                else if (names.Count > 0)
-                {
-                    _modelBox.Text = names[0];
-                }
+                _modelBox.Text = selected;
             }
             catch (Exception ex)
             {
@@ -245,11 +377,11 @@ namespace EaGpt.AddIn
             AppendResponse("You: " + prompt + Environment.NewLine + Environment.NewLine);
 
             string selection;
-            string xml;
+            ModelSnapshot snapshot;
             try
             {
                 selection = EaModelReader.SelectionContext(repo);
-                xml = ModelDigestBuilder.ToXml(EaModelReader.Read(repo));
+                snapshot = EaModelReader.Read(repo);
             }
             catch (Exception ex)
             {
@@ -258,19 +390,29 @@ namespace EaGpt.AddIn
                 return;
             }
 
-            string knowledge = KnowledgeRetriever.Retrieve(_settings.KnowledgeFolder, prompt, _settings.KnowledgeMaxChars);
-            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge);
             string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
-            _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
-                             "Ollama: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
-                             "Selection:" + Environment.NewLine + selection + Environment.NewLine +
-                             "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
-                             userMessage;
+            string knowledge = KnowledgeRetriever.Retrieve(_settings.KnowledgeFolder, prompt, _settings.KnowledgeMaxChars);
+            string analysis = ModelAnalysisContext.Build(snapshot, selection, prompt);
 
+            int reportedCtx = 0;
+            int numCtx;
+            int timeoutMs;
             OllamaClient client;
             try
             {
-                client = CreateClient();
+                var probe = CreateClient();
+                try
+                {
+                    reportedCtx = probe.FetchShowContextTokens();
+                }
+                catch
+                {
+                    reportedCtx = 0;
+                }
+
+                numCtx = LlmContextConfig.ResolveNumCtx(reportedCtx, _settings.NumCtx, _settings.UseModelMaxCtx);
+                timeoutMs = LlmContextConfig.ResolveReadTimeoutMs(numCtx, _settings.TimeoutMs);
+                client = CreateClient(timeoutMs);
             }
             catch (Exception ex)
             {
@@ -278,6 +420,20 @@ namespace EaGpt.AddIn
                 FinishRequest();
                 return;
             }
+
+            int overhead = UserMessageBuilder.BuildUserMessage(selection, "", prompt, knowledge, analysis).Length;
+            int maxXml = LlmContextConfig.ResolveMaxXmlChars(numCtx, systemPrompt.Length, overhead);
+            string xml = ModelDigestBuilder.ToXml(snapshot, maxXml);
+            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge, analysis);
+            var historyCopy = new List<ChatTurn>(_history);
+            _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
+                             "LLM: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
+                             "num_ctx=" + numCtx + " (reported=" + reportedCtx + ", useModelMax=" + _settings.UseModelMaxCtx + ")" + Environment.NewLine +
+                             "timeoutMs=" + timeoutMs + " xmlChars=" + xml.Length + "/" + maxXml + Environment.NewLine +
+                             "History turns: " + historyCopy.Count + Environment.NewLine +
+                             "Selection:" + Environment.NewLine + selection + Environment.NewLine +
+                             "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
+                             userMessage;
 
             var reply = new StringBuilder();
             Task.Run(() =>
@@ -288,7 +444,7 @@ namespace EaGpt.AddIn
                     {
                         reply.Append(delta);
                         BeginInvoke(new Action(() => AppendResponse(delta)));
-                    }, token);
+                    }, token, historyCopy, numCtx);
 
                     if (reply.Length == 0)
                     {
@@ -296,7 +452,11 @@ namespace EaGpt.AddIn
                         BeginInvoke(new Action(() => AppendResponse(text)));
                     }
 
-                    BeginInvoke(new Action(() => ApplyIfChanges(repo, reply.ToString(), prompt)));
+                    BeginInvoke(new Action(() =>
+                    {
+                        ChatHistory.Remember(_history, prompt, reply.ToString());
+                        ApplyIfChanges(repo, snapshot, reply.ToString(), prompt);
+                    }));
                 }
                 catch (OperationCanceledException)
                 {
@@ -313,7 +473,7 @@ namespace EaGpt.AddIn
             }, token);
         }
 
-        private void ApplyIfChanges(ComObj repo, string reply, string prompt)
+        private void ApplyIfChanges(ComObj repo, ModelSnapshot snapshot, string reply, string prompt)
         {
             AppendResponse(Environment.NewLine + Environment.NewLine);
             if (!ArchiMateLlmResultParser.LooksLikeChangesJson(reply))
@@ -330,9 +490,11 @@ namespace EaGpt.AddIn
 
             var errors = ArchiMateSchemaValidator.Validate(parsed);
             errors.AddRange(MutationPolicy.CheckLimits(parsed));
+            errors.AddRange(RelationshipLegality.Validate(parsed, snapshot));
             if (errors.Count > 0)
             {
                 AppendResponse("Validation errors:" + Environment.NewLine + string.Join(Environment.NewLine, errors) + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: false);
                 return;
             }
 
@@ -341,6 +503,9 @@ namespace EaGpt.AddIn
             {
                 AppendResponse("The reply included a new diagram block; it was ignored because a diagram was open and you did not ask for a new view — shapes were added to the open view." + Environment.NewLine);
             }
+
+            DiagramLayout.Prepare(parsed, snapshot);
+            AppendResponse(MutationPolicy.PreviewSummary(parsed) + Environment.NewLine);
 
             if (MutationPolicy.IsDestructive(parsed))
             {
@@ -354,6 +519,7 @@ namespace EaGpt.AddIn
                 if (confirm != DialogResult.Yes)
                 {
                     AppendResponse("Destructive changes were not applied." + Environment.NewLine);
+                    AuditLog.TryAppend(null, parsed, prompt, applied: false);
                     return;
                 }
             }
@@ -366,10 +532,12 @@ namespace EaGpt.AddIn
                     EaModelReader.TargetPackage(repo),
                     currentDiagram);
                 AppendResponse(report.Summarize() + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: true);
             }
             catch (Exception ex)
             {
                 AppendResponse("Could not apply changes in EA: " + ex.Message + Environment.NewLine);
+                AuditLog.TryAppend(null, parsed, prompt, applied: false);
             }
         }
 

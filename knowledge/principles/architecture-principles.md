@@ -14,3 +14,7 @@ Replace this file with your organisation’s principles. Keep each rule short.
 ## Reuse
 
 - Before creating a new ApplicationComponent, check whether the name already exists in the model XML or in the CMDB extract.
+
+## Finnish public sector
+
+If the user is modelling a *tiedonhallintayksikkö* (kunta, hyvinvointialue, virasto), also apply `principles/julkishallinto-ka.md`: once-only, 5 § owners, named **tekninen rajapinta**, JHS 179 as method not a second law.

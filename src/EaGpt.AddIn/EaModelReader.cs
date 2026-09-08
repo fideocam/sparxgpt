@@ -132,7 +132,53 @@ namespace EaGpt.AddIn
         internal static string DescribeElement(ComObj el)
         {
             string type = ArchiMateEaTypeMap.FromEaStereotype(FirstStereotype(el.Str("StereotypeEx"), el.Str("Stereotype")), relationship: false);
-            return "Element " + type + " \"" + el.Str("Name") + "\" (id=" + IdHelper.FromEaGuid(el.Str("ElementGUID")) + ")";
+            string line = "Element " + type + " \"" + el.Str("Name") + "\" (id=" + IdHelper.FromEaGuid(el.Str("ElementGUID")) + ")";
+            string notes = FlattenNotes(el.Str("Notes"));
+            if (notes.Length > 0)
+            {
+                line += " notes: " + notes;
+            }
+
+            return line;
+        }
+
+        private static string FlattenNotes(string? notes)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+            {
+                return "";
+            }
+
+            var sb = new System.Text.StringBuilder(notes!.Length);
+            bool space = false;
+            foreach (char c in notes)
+            {
+                if (c == '\r' || c == '\n' || c == '\t')
+                {
+                    space = true;
+                    continue;
+                }
+
+                if (c < ' ')
+                {
+                    continue;
+                }
+
+                if (space)
+                {
+                    sb.Append(' ');
+                    space = false;
+                }
+
+                sb.Append(c);
+                if (sb.Length >= 220)
+                {
+                    sb.Append('…');
+                    break;
+                }
+            }
+
+            return sb.ToString().Trim();
         }
 
         internal static string DescribeConnector(ComObj c, ComObj repository)

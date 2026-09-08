@@ -17,6 +17,41 @@ namespace EaGpt.Tests
         }
 
         [Fact]
+        public void BuildChatRequestJson_IncludesNumCtxWhenLargeEnough()
+        {
+            string json = OllamaClient.BuildChatRequestJson("llama3.2", "sys", "user", stream: false, history: null, numCtx: 32768);
+            Assert.Contains("\"options\":{\"num_ctx\":32768}", json);
+        }
+
+        [Fact]
+        public void BuildChatRequestJson_OmitsNumCtxWhenUnset()
+        {
+            string json = OllamaClient.BuildChatRequestJson("llama3.2", "sys", "user", stream: false, history: null, numCtx: 0);
+            Assert.DoesNotContain("num_ctx", json);
+        }
+
+        [Fact]
+        public void ParseShowContextTokens_FromModelInfo()
+        {
+            const string json = "{\"model_info\":{\"llama.context_length\":131072}}";
+            Assert.Equal(131072, OllamaJson.ParseShowContextTokens(json));
+        }
+
+        [Fact]
+        public void ParseShowContextTokens_PicksLargest()
+        {
+            const string json = "{\"model_info\":{\"a.context_length\":4096,\"b.context_length\":16384,\"general.num_ctx\":8192}}";
+            Assert.Equal(16384, OllamaJson.ParseShowContextTokens(json));
+        }
+
+        [Fact]
+        public void ParseShowContextTokens_EmptyIsZero()
+        {
+            Assert.Equal(0, OllamaJson.ParseShowContextTokens(""));
+            Assert.Equal(0, OllamaJson.ParseShowContextTokens(null));
+        }
+
+        [Fact]
         public void ParseModelNames_FromTagsPayload()
         {
             const string body = "{\"models\":[{\"name\":\"llama3.2:latest\",\"size\":1},{\"name\":\"mistral\"}]}";

@@ -64,6 +64,8 @@ namespace EaGpt.Tests
             Assert.False(ArchiMateLlmResultParser.LooksLikeChangesJson("The model contains a Customer actor."));
             Assert.False(ArchiMateLlmResultParser.LooksLikeChangesJson("There are several elements and relationships in this model."));
             Assert.True(ArchiMateLlmResultParser.LooksLikeChangesJson("{\"elements\":[],\"relationships\":[]}"));
+            Assert.True(ArchiMateLlmResultParser.LooksLikeChangesJson(
+                "{\"removeRelationshipIds\":[\"id-cccccccccccccccccccccccccccccccc\"]}"));
         }
 
         [Fact]
@@ -148,6 +150,17 @@ namespace EaGpt.Tests
             const string json = @"{""elements"":[{""type"":""BusinessActor"",""name"":""Line1\nLine2"",""id"":""id-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""}],""relationships"":[]}";
             var result = ArchiMateLlmResultParser.Parse(json);
             Assert.Contains("\n", result.Elements[0].Name);
+        }
+
+        [Fact]
+        public void Parse_RemoveRelationshipIdsOnly_ExtractsFromProse()
+        {
+            const string id = "id-cccccccccccccccccccccccccccccccc";
+            string raw = "Done.\n```json\n{\"removeRelationshipIds\":[\"" + id + "\"]}\n```";
+            Assert.True(ArchiMateLlmResultParser.LooksLikeChangesJson(raw));
+            var result = ArchiMateLlmResultParser.Parse(raw);
+            Assert.Contains(id, result.RemoveRelationshipIds);
+            Assert.True(result.HasMutations);
         }
     }
 }

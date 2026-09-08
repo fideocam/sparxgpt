@@ -29,6 +29,21 @@ namespace EaGpt.Tests
         }
 
         [Fact]
+        public void SaveAndLoad_ContextWindowSettings()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "eagpt-tests", Guid.NewGuid().ToString("N"), "settings.ini");
+            var original = new EaGptSettings
+            {
+                UseModelMaxCtx = true,
+                NumCtx = 65536
+            };
+            original.Save(path);
+            EaGptSettings loaded = EaGptSettings.Load(path);
+            Assert.True(loaded.UseModelMaxCtx);
+            Assert.Equal(65536, loaded.NumCtx);
+        }
+
+        [Fact]
         public void Load_RejectsUnsafeUrlAndBadModel()
         {
             string path = Path.Combine(Path.GetTempPath(), "eagpt-tests", Guid.NewGuid().ToString("N"), "settings.ini");

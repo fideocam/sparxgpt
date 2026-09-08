@@ -17,8 +17,14 @@ namespace EaGpt
         private readonly string _model;
         private readonly int _timeoutMs;
 
+        private LlmApiKind _apiKind = LlmApiKind.Unknown;
+
         public string BaseUrl => _baseUrl;
         public string Model => _model;
+
+        public string ApiDisplayName =>
+            _apiKind == LlmApiKind.OpenAiCompat ? "OpenAI-compatible (LM Studio)" :
+            _apiKind == LlmApiKind.Ollama ? "Ollama" : "LLM";
 
         public OllamaClient() : this(DefaultBaseUrl, DefaultModel)
         {
@@ -67,9 +73,9 @@ namespace EaGpt
                 return 3000;
             }
 
-            if (timeoutMs > 600000)
+            if (timeoutMs > LlmContextConfig.TimeoutCeilingMs)
             {
-                return 600000;
+                return LlmContextConfig.TimeoutCeilingMs;
             }
 
             return timeoutMs;
@@ -117,9 +123,8 @@ namespace EaGpt
         {
             try
             {
-                var request = CreateRequest(_baseUrl + "/api/tags", "GET", 3000);
-                using var response = (HttpWebResponse)request.GetResponse();
-                return (int)response.StatusCode >= 200 && (int)response.StatusCode < 400;
+                DetectApi();
+                return _apiKind != LlmApiKind.Unknown;
             }
             catch
             {
@@ -129,22 +134,70 @@ namespace EaGpt
 
         public IList<string> FetchInstalledModelNames()
         {
-            string body = Get(_baseUrl + "/api/tags", 10000);
-            var names = OllamaJson.ParseModelNames(body);
-            var list = new List<string>(names);
-            list.Sort(StringComparer.OrdinalIgnoreCase);
-            return list;
+            DetectApi();
+            if (_apiKind == LlmApiKind.OpenAiCompat)
+            {
+                string body = Get(_baseUrl + "/v1/models", 10000);
+                var names = OllamaJson.ParseOpenAiModelIds(body);
+                var list = new List<string>(names);
+                list.Sort(StringComparer.OrdinalIgnoreCase);
+                return list;
+            }
+
+            string tags = Get(_baseUrl + "/api/tags", 10000);
+            var ollama = new List<string>(OllamaJson.ParseModelNames(tags));
+            ollama.Sort(StringComparer.OrdinalIgnoreCase);
+            return ollama;
+        }
+
+        /// <summary>
+        /// POST /api/show context_length / num_ctx. 0 if the server is not Ollama or the field is missing.
+        /// </summary>
+        public int FetchShowContextTokens()
+        {
+            DetectApi();
+            if (_apiKind != LlmApiKind.Ollama)
+            {
+                return 0;
+            }
+
+            string body = PostJson(_baseUrl + "/api/show", "{\"name\":\"" + JsonUtil.Escape(_model) + "\"}", 10000);
+            return OllamaJson.ParseShowContextTokens(body);
         }
 
         public string Chat(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
-            return Chat(systemPrompt, userPrompt, null, cancellationToken);
+            return Chat(systemPrompt, userPrompt, null, cancellationToken, null);
         }
 
         public string Chat(string systemPrompt, string userPrompt, Action<string>? onDelta, CancellationToken cancellationToken = default)
         {
-            string requestBody = BuildChatRequestJson(_model, systemPrompt, userPrompt, stream: onDelta != null);
-            var request = CreateRequest(_baseUrl + "/api/chat", "POST", _timeoutMs);
+            return Chat(systemPrompt, userPrompt, onDelta, cancellationToken, null);
+        }
+
+        public string Chat(
+            string systemPrompt,
+            string userPrompt,
+            Action<string>? onDelta,
+            CancellationToken cancellationToken,
+            IList<ChatTurn>? history)
+        {
+            return Chat(systemPrompt, userPrompt, onDelta, cancellationToken, history, numCtx: 0);
+        }
+
+        public string Chat(
+            string systemPrompt,
+            string userPrompt,
+            Action<string>? onDelta,
+            CancellationToken cancellationToken,
+            IList<ChatTurn>? history,
+            int numCtx)
+        {
+            DetectApi();
+            bool openAi = _apiKind == LlmApiKind.OpenAiCompat;
+            string path = openAi ? "/v1/chat/completions" : "/api/chat";
+            string requestBody = BuildChatRequestJson(_model, systemPrompt, userPrompt, stream: onDelta != null, history, openAi ? 0 : numCtx);
+            var request = CreateRequest(_baseUrl + path, "POST", _timeoutMs);
             request.ContentType = "application/json";
             cancellationToken.ThrowIfCancellationRequested();
             using (cancellationToken.Register(() =>
@@ -178,7 +231,7 @@ namespace EaGpt
                 {
                     string body = reader.ReadToEnd();
                     ThrowIfHttpError(response, body);
-                    return OllamaJson.ExtractMessageContent(body);
+                    return OllamaJson.ExtractChatDelta(body);
                 }
 
                 var full = new StringBuilder();
@@ -191,7 +244,7 @@ namespace EaGpt
                         continue;
                     }
 
-                    string delta = OllamaJson.ExtractMessageContent(line);
+                    string delta = OllamaJson.ExtractChatDelta(line);
                     if (delta.Length > 0)
                     {
                         full.Append(delta);
@@ -203,13 +256,118 @@ namespace EaGpt
             }
         }
 
+        internal void DetectApi()
+        {
+            if (_apiKind != LlmApiKind.Unknown)
+            {
+                return;
+            }
+
+            bool preferOpenAi = false;
+            try
+            {
+                preferOpenAi = new Uri(_baseUrl).Port == 1234;
+            }
+            catch
+            {
+                // keep Ollama-first
+            }
+
+            if (preferOpenAi)
+            {
+                if (TryGet("/v1/models", 3000, out _))
+                {
+                    _apiKind = LlmApiKind.OpenAiCompat;
+                    return;
+                }
+
+                if (TryGet("/api/tags", 3000, out _))
+                {
+                    _apiKind = LlmApiKind.Ollama;
+                    return;
+                }
+            }
+            else
+            {
+                if (TryGet("/api/tags", 3000, out _))
+                {
+                    _apiKind = LlmApiKind.Ollama;
+                    return;
+                }
+
+                if (TryGet("/v1/models", 3000, out _))
+                {
+                    _apiKind = LlmApiKind.OpenAiCompat;
+                    return;
+                }
+            }
+
+            _apiKind = LlmApiKind.Unknown;
+        }
+
+        private bool TryGet(string path, int timeoutMs, out string body)
+        {
+            body = "";
+            try
+            {
+                body = Get(_baseUrl + path, timeoutMs);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static string BuildChatRequestJson(string model, string systemPrompt, string userPrompt, bool stream)
+        {
+            return BuildChatRequestJson(model, systemPrompt, userPrompt, stream, null);
+        }
+
+        public static string BuildChatRequestJson(
+            string model,
+            string systemPrompt,
+            string userPrompt,
+            bool stream,
+            IList<ChatTurn>? history)
+        {
+            return BuildChatRequestJson(model, systemPrompt, userPrompt, stream, history, 0);
+        }
+
+        public static string BuildChatRequestJson(
+            string model,
+            string systemPrompt,
+            string userPrompt,
+            bool stream,
+            IList<ChatTurn>? history,
+            int numCtx)
         {
             var sb = new StringBuilder();
             sb.Append("{\"model\":\"").Append(JsonUtil.Escape(model)).Append("\",\"stream\":").Append(stream ? "true" : "false");
+            if (numCtx >= LlmContextConfig.MinNumCtx)
+            {
+                sb.Append(",\"options\":{\"num_ctx\":").Append(numCtx).Append("}");
+            }
             sb.Append(",\"messages\":[");
-            sb.Append("{\"role\":\"system\",\"content\":\"").Append(JsonUtil.Escape(systemPrompt)).Append("\"},");
-            sb.Append("{\"role\":\"user\",\"content\":\"").Append(JsonUtil.Escape(userPrompt)).Append("\"}");
+            sb.Append("{\"role\":\"system\",\"content\":\"").Append(JsonUtil.Escape(systemPrompt)).Append("\"}");
+            if (history != null)
+            {
+                foreach (var turn in history)
+                {
+                    if (turn == null || string.IsNullOrWhiteSpace(turn.User))
+                    {
+                        continue;
+                    }
+
+                    sb.Append(",{\"role\":\"user\",\"content\":\"").Append(JsonUtil.Escape(turn.User)).Append("\"}");
+                    if (!string.IsNullOrWhiteSpace(turn.Assistant))
+                    {
+                        sb.Append(",{\"role\":\"assistant\",\"content\":\"").Append(JsonUtil.Escape(turn.Assistant)).Append("\"}");
+                    }
+                }
+            }
+
+            sb.Append(",{\"role\":\"user\",\"content\":\"").Append(JsonUtil.Escape(userPrompt)).Append("\"}");
             sb.Append("]}");
             return sb.ToString();
         }
@@ -217,6 +375,25 @@ namespace EaGpt
         private static string Get(string url, int timeoutMs)
         {
             var request = CreateRequest(url, "GET", timeoutMs);
+            using var response = (HttpWebResponse)request.GetResponse();
+            using var stream = response.GetResponseStream();
+            using var reader = stream != null ? new StreamReader(stream, Encoding.UTF8) : null;
+            string body = reader != null ? reader.ReadToEnd() : "";
+            ThrowIfHttpError(response, body);
+            return body;
+        }
+
+        private static string PostJson(string url, string json, int timeoutMs)
+        {
+            var request = CreateRequest(url, "POST", timeoutMs);
+            request.ContentType = "application/json";
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            request.ContentLength = bytes.Length;
+            using (Stream os = request.GetRequestStream())
+            {
+                os.Write(bytes, 0, bytes.Length);
+            }
+
             using var response = (HttpWebResponse)request.GetResponse();
             using var stream = response.GetResponseStream();
             using var reader = stream != null ? new StreamReader(stream, Encoding.UTF8) : null;
@@ -274,21 +451,152 @@ namespace EaGpt
             return names;
         }
 
-        public static string ExtractMessageContent(string json)
+        /// <summary>
+        /// Best-effort context length from Ollama /api/show JSON (context_length or num_ctx).
+        /// </summary>
+        public static int ParseShowContextTokens(string? json)
         {
-            int msgStart = json.IndexOf("\"message\"", StringComparison.Ordinal);
-            if (msgStart < 0)
+            if (string.IsNullOrEmpty(json))
             {
-                return ExtractField(json, "\"response\":\"");
+                return 0;
             }
 
-            int contentKey = json.IndexOf("\"content\":\"", msgStart, StringComparison.Ordinal);
-            if (contentKey < 0)
+            int best = 0;
+            best = Math.Max(best, MaxIntAfterKey(json!, "context_length"));
+            best = Math.Max(best, MaxIntAfterKey(json!, "num_ctx"));
+            return best;
+        }
+
+        private static int MaxIntAfterKey(string json, string key)
+        {
+            int best = 0;
+            int idx = 0;
+            while (true)
+            {
+                int keyAt = json.IndexOf(key, idx, StringComparison.Ordinal);
+                if (keyAt < 0)
+                {
+                    break;
+                }
+
+                int colon = json.IndexOf(':', keyAt + key.Length);
+                if (colon < 0)
+                {
+                    break;
+                }
+
+                int i = colon + 1;
+                while (i < json.Length && (json[i] == ' ' || json[i] == '\t' || json[i] == '"'))
+                {
+                    i++;
+                }
+
+                int start = i;
+                while (i < json.Length && char.IsDigit(json[i]))
+                {
+                    i++;
+                }
+
+                if (i > start && int.TryParse(json.Substring(start, i - start), out int n) && n > best)
+                {
+                    best = n;
+                }
+
+                idx = keyAt + key.Length;
+            }
+
+            return best;
+        }
+
+        public static string ExtractMessageContent(string json)
+        {
+            return ExtractChatDelta(json);
+        }
+
+        /// <summary>
+        /// Content from an Ollama /api/chat line or an OpenAI-compatible /v1/chat/completions payload (including SSE).
+        /// </summary>
+        public static string ExtractChatDelta(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
             {
                 return "";
             }
 
-            return JsonUtil.ReadJsonString(json, contentKey + "\"content\":\"".Length);
+            string s = json.Trim();
+            if (s.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                s = s.Substring(5).Trim();
+            }
+
+            if (s == "[DONE]")
+            {
+                return "";
+            }
+
+            int delta = s.IndexOf("\"delta\"", StringComparison.Ordinal);
+            if (delta >= 0)
+            {
+                int contentKey = s.IndexOf("\"content\":\"", delta, StringComparison.Ordinal);
+                if (contentKey >= 0)
+                {
+                    return JsonUtil.ReadJsonString(s, contentKey + "\"content\":\"".Length);
+                }
+            }
+
+            int msgStart = s.IndexOf("\"message\"", StringComparison.Ordinal);
+            if (msgStart >= 0)
+            {
+                int contentKey = s.IndexOf("\"content\":\"", msgStart, StringComparison.Ordinal);
+                if (contentKey >= 0)
+                {
+                    return JsonUtil.ReadJsonString(s, contentKey + "\"content\":\"".Length);
+                }
+            }
+
+            int responseKey = s.IndexOf("\"response\":\"", StringComparison.Ordinal);
+            if (responseKey >= 0)
+            {
+                return JsonUtil.ReadJsonString(s, responseKey + "\"response\":\"".Length);
+            }
+
+            return "";
+        }
+
+        public static IList<string> ParseOpenAiModelIds(string? json)
+        {
+            var names = new List<string>();
+            if (string.IsNullOrEmpty(json))
+            {
+                return names;
+            }
+
+            int idx = 0;
+            while (true)
+            {
+                int key = json!.IndexOf("\"id\"", idx, StringComparison.Ordinal);
+                if (key < 0)
+                {
+                    break;
+                }
+
+                int colon = json.IndexOf(':', key);
+                int quote = json.IndexOf('"', colon + 1);
+                if (quote < 0)
+                {
+                    break;
+                }
+
+                string name = JsonUtil.ReadJsonString(json, quote + 1);
+                if (name.Length > 0 && !names.Contains(name))
+                {
+                    names.Add(name);
+                }
+
+                idx = quote + 1;
+            }
+
+            return names;
         }
 
         private static string ExtractField(string json, string key)
@@ -301,5 +609,12 @@ namespace EaGpt
 
             return JsonUtil.ReadJsonString(json, start + key.Length);
         }
+    }
+
+    internal enum LlmApiKind
+    {
+        Unknown = 0,
+        Ollama = 1,
+        OpenAiCompat = 2
     }
 }

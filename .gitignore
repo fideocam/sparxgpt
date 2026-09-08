@@ -18,4 +18,16 @@ artifacts/
 *.userprefs
 agent-tools/
 .cursor/
+release/*.dll
+release/*.pdb
+release/*.xml
+release/*.tlb
+release/*.zip
+release/VERSION.txt
+stable/*.dll
+stable/*.pdb
+stable/*.xml
+stable/*.tlb
+stable/*.zip
+stable/VERSION.txt
 
