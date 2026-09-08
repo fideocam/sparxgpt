@@ -26,6 +26,9 @@ namespace EaGpt.AddIn
         private readonly ComboBox _starterBox = new ComboBox();
         private readonly TextBox _debugBox = new TextBox();
         private readonly TabControl _tabs = new TabControl();
+        private readonly CheckBox _useModelMaxBox = new CheckBox();
+        private readonly NumericUpDown _numCtxBox = new NumericUpDown();
+        private readonly Label _ctxStatusLabel = new Label();
         private readonly List<ChatTurn> _history = new List<ChatTurn>();
 
         private CancellationTokenSource? _cts;
@@ -72,6 +75,7 @@ namespace EaGpt.AddIn
 
             _tabs.Dock = DockStyle.Fill;
             var chatPage = new TabPage("Chat");
+            var serverPage = new TabPage("Server");
             var debugPage = new TabPage("Debug");
 
             _responseBox.Dock = DockStyle.Fill;
@@ -124,6 +128,8 @@ namespace EaGpt.AddIn
             chatPage.Controls.Add(_responseBox);
             chatPage.Controls.Add(bottom);
 
+            serverPage.Controls.Add(BuildServerPage());
+
             _debugBox.Dock = DockStyle.Fill;
             _debugBox.Multiline = true;
             _debugBox.ScrollBars = ScrollBars.Both;
@@ -132,6 +138,7 @@ namespace EaGpt.AddIn
             debugPage.Controls.Add(_debugBox);
 
             _tabs.TabPages.Add(chatPage);
+            _tabs.TabPages.Add(serverPage);
             _tabs.TabPages.Add(debugPage);
 
             Controls.Add(_tabs);
@@ -156,6 +163,91 @@ namespace EaGpt.AddIn
             };
         }
 
+        private Control BuildServerPage()
+        {
+            var page = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+            var layout = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true
+            };
+
+            var intro = new Label
+            {
+                AutoSize = true,
+                MaximumSize = new Size(640, 0),
+                Text = "Ollama context size (num_ctx). The URL and model on the bar above still apply. "
+                       + "Use model max sends the architecture limit from POST /api/show; uncheck it to type a smaller window."
+            };
+            layout.Controls.Add(intro);
+
+            _useModelMaxBox.Text = "Use model max context";
+            _useModelMaxBox.AutoSize = true;
+            _useModelMaxBox.Checked = _settings.UseModelMaxCtx;
+            _useModelMaxBox.CheckedChanged += (_, __) =>
+            {
+                _numCtxBox.Enabled = !_useModelMaxBox.Checked;
+                UpdateCtxStatus();
+            };
+            layout.Controls.Add(_useModelMaxBox);
+
+            var ctxRow = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = false,
+                Margin = new Padding(0, 8, 0, 0)
+            };
+            ctxRow.Controls.Add(new Label
+            {
+                Text = "Context size",
+                AutoSize = true,
+                Padding = new Padding(0, 6, 8, 0)
+            });
+            _numCtxBox.Minimum = LlmContextConfig.MinNumCtx;
+            _numCtxBox.Maximum = LlmContextConfig.MaxNumCtx;
+            _numCtxBox.Increment = 1024;
+            _numCtxBox.Width = 120;
+            int initialCtx = _settings.NumCtx >= LlmContextConfig.MinNumCtx
+                ? _settings.NumCtx
+                : LlmContextConfig.DefaultReportedCtxCap;
+            if (initialCtx > LlmContextConfig.MaxNumCtx)
+            {
+                initialCtx = LlmContextConfig.MaxNumCtx;
+            }
+
+            _numCtxBox.Value = initialCtx;
+            _numCtxBox.Enabled = !_useModelMaxBox.Checked;
+            _numCtxBox.ValueChanged += (_, __) => UpdateCtxStatus();
+            ctxRow.Controls.Add(_numCtxBox);
+            layout.Controls.Add(ctxRow);
+
+            _ctxStatusLabel.AutoSize = true;
+            _ctxStatusLabel.MaximumSize = new Size(640, 0);
+            _ctxStatusLabel.Padding = new Padding(0, 12, 0, 0);
+            _ctxStatusLabel.ForeColor = Color.DimGray;
+            layout.Controls.Add(_ctxStatusLabel);
+            UpdateCtxStatus();
+
+            page.Controls.Add(layout);
+            return page;
+        }
+
+        private void UpdateCtxStatus()
+        {
+            if (_useModelMaxBox.Checked)
+            {
+                _ctxStatusLabel.Text = "Next request will use the model's reported maximum (clamped to "
+                    + LlmContextConfig.MaxNumCtx + " tokens).";
+            }
+            else
+            {
+                _ctxStatusLabel.Text = "Next request num_ctx=" + (int)_numCtxBox.Value
+                    + " (not above the model's reported maximum when /api/show succeeds).";
+            }
+        }
+
         private void StarterPicked(object? sender, EventArgs e)
         {
             if (_starterBox.SelectedIndex <= 0)
@@ -169,7 +261,7 @@ namespace EaGpt.AddIn
             {
                 _promptBox.Text = text;
                 _promptBox.Focus();
-                _promptBox.SelectionStart = _promptBox.Text.Length;
+                _promptBox.SelectionStart = text!.Length;
             }
         }
 
@@ -188,7 +280,7 @@ namespace EaGpt.AddIn
             }
         }
 
-        private OllamaClient CreateClient()
+        private OllamaClient CreateClient(int? timeoutMs = null)
         {
             PersistSettings();
             if (!OllamaEndpoint.TryNormalize(_urlBox.Text, out string normalized, out string error))
@@ -197,7 +289,7 @@ namespace EaGpt.AddIn
             }
 
             _urlBox.Text = normalized;
-            return new OllamaClient(normalized, _modelBox.Text.Trim(), _settings.TimeoutMs);
+            return new OllamaClient(normalized, _modelBox.Text.Trim(), timeoutMs ?? _settings.TimeoutMs);
         }
 
         private void PersistSettings()
@@ -209,6 +301,8 @@ namespace EaGpt.AddIn
             }
 
             _settings.Model = OllamaClient.SanitizeModelName(_modelBox.Text);
+            _settings.UseModelMaxCtx = _useModelMaxBox.Checked;
+            _settings.NumCtx = LlmContextConfig.ClampNumCtx((int)_numCtxBox.Value);
             try
             {
                 _settings.Save();
@@ -243,21 +337,15 @@ namespace EaGpt.AddIn
             {
                 var client = CreateClient();
                 var names = client.FetchInstalledModelNames();
-                string current = _modelBox.Text;
+                var items = OllamaModelList.FromServerNames(names);
+                string selected = OllamaModelList.SelectionAfterRefresh(items, _modelBox.Text);
                 _modelBox.Items.Clear();
-                foreach (string name in names)
+                foreach (string name in items)
                 {
                     _modelBox.Items.Add(name);
                 }
 
-                if (!string.IsNullOrWhiteSpace(current))
-                {
-                    _modelBox.Text = current;
-                }
-                else if (names.Count > 0)
-                {
-                    _modelBox.Text = names[0];
-                }
+                _modelBox.Text = selected;
             }
             catch (Exception ex)
             {
@@ -289,13 +377,11 @@ namespace EaGpt.AddIn
             AppendResponse("You: " + prompt + Environment.NewLine + Environment.NewLine);
 
             string selection;
-            string xml;
             ModelSnapshot snapshot;
             try
             {
                 selection = EaModelReader.SelectionContext(repo);
                 snapshot = EaModelReader.Read(repo);
-                xml = ModelDigestBuilder.ToXml(snapshot);
             }
             catch (Exception ex)
             {
@@ -304,22 +390,29 @@ namespace EaGpt.AddIn
                 return;
             }
 
+            string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
             string knowledge = KnowledgeRetriever.Retrieve(_settings.KnowledgeFolder, prompt, _settings.KnowledgeMaxChars);
             string analysis = ModelAnalysisContext.Build(snapshot, selection, prompt);
-            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge, analysis);
-            string systemPrompt = ArchiMateSystemPrompt.GetSystemPrompt();
-            var historyCopy = new List<ChatTurn>(_history);
-            _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
-                             "LLM: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
-                             "History turns: " + historyCopy.Count + Environment.NewLine +
-                             "Selection:" + Environment.NewLine + selection + Environment.NewLine +
-                             "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
-                             userMessage;
 
+            int reportedCtx = 0;
+            int numCtx;
+            int timeoutMs;
             OllamaClient client;
             try
             {
-                client = CreateClient();
+                var probe = CreateClient();
+                try
+                {
+                    reportedCtx = probe.FetchShowContextTokens();
+                }
+                catch
+                {
+                    reportedCtx = 0;
+                }
+
+                numCtx = LlmContextConfig.ResolveNumCtx(reportedCtx, _settings.NumCtx, _settings.UseModelMaxCtx);
+                timeoutMs = LlmContextConfig.ResolveReadTimeoutMs(numCtx, _settings.TimeoutMs);
+                client = CreateClient(timeoutMs);
             }
             catch (Exception ex)
             {
@@ -327,6 +420,20 @@ namespace EaGpt.AddIn
                 FinishRequest();
                 return;
             }
+
+            int overhead = UserMessageBuilder.BuildUserMessage(selection, "", prompt, knowledge, analysis).Length;
+            int maxXml = LlmContextConfig.ResolveMaxXmlChars(numCtx, systemPrompt.Length, overhead);
+            string xml = ModelDigestBuilder.ToXml(snapshot, maxXml);
+            string userMessage = UserMessageBuilder.BuildUserMessage(selection, xml, prompt, knowledge, analysis);
+            var historyCopy = new List<ChatTurn>(_history);
+            _debugBox.Text = "Version 1.0.0" + Environment.NewLine +
+                             "LLM: " + _urlBox.Text + " model=" + _modelBox.Text + Environment.NewLine +
+                             "num_ctx=" + numCtx + " (reported=" + reportedCtx + ", useModelMax=" + _settings.UseModelMaxCtx + ")" + Environment.NewLine +
+                             "timeoutMs=" + timeoutMs + " xmlChars=" + xml.Length + "/" + maxXml + Environment.NewLine +
+                             "History turns: " + historyCopy.Count + Environment.NewLine +
+                             "Selection:" + Environment.NewLine + selection + Environment.NewLine +
+                             "User message (" + userMessage.Length + " chars)" + Environment.NewLine +
+                             userMessage;
 
             var reply = new StringBuilder();
             Task.Run(() =>
@@ -337,7 +444,7 @@ namespace EaGpt.AddIn
                     {
                         reply.Append(delta);
                         BeginInvoke(new Action(() => AppendResponse(delta)));
-                    }, token, historyCopy);
+                    }, token, historyCopy, numCtx);
 
                     if (reply.Length == 0)
                     {

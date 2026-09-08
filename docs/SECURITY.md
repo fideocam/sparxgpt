@@ -24,7 +24,7 @@ The LLM is **not** trusted. Parser, schema, and mutation-policy checks run befor
 - Userinfo (`user:password@host`) is rejected so credentials are not stored in settings or sent in `Host`.
 - Path, query, and fragment are stripped; the client calls `/api/tags` and `/api/chat` on Ollama, or `/v1/models` and `/v1/chat/completions` on OpenAI-compatible servers (LM Studio). There is **no API-key field**; a cloud OpenAI URL would send the digest with no auth and is not recommended.
 - Redirects are disabled (`AllowAutoRedirect = false`).
-- Timeouts are clamped to 3s–600s.
+- Timeouts are clamped to 3s–2h (large `num_ctx` scales the wait, matching ArchiGPT).
 - `HTTP_PROXY` is ignored so the model digest is not sent through a proxy.
 - Model names cannot contain quotes, backslashes, or control characters (JSON injection into the request body).
 - Request JSON escapes quotes, newlines, and other control characters.

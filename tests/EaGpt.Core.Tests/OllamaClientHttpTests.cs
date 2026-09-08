@@ -26,7 +26,7 @@ namespace EaGpt.Tests
         public void ClampTimeout_Bounds()
         {
             Assert.Equal(3000, OllamaClient.ClampTimeout(1));
-            Assert.Equal(600000, OllamaClient.ClampTimeout(int.MaxValue));
+            Assert.Equal(LlmContextConfig.TimeoutCeilingMs, OllamaClient.ClampTimeout(int.MaxValue));
             Assert.Equal(12000, OllamaClient.ClampTimeout(12000));
         }
     }

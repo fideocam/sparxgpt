@@ -10,6 +10,8 @@ namespace EaGpt
         public int TimeoutMs { get; set; } = 180000;
         public string KnowledgeFolder { get; set; } = KnowledgeRetriever.DefaultFolder();
         public int KnowledgeMaxChars { get; set; } = KnowledgeRetriever.DefaultMaxChars;
+        public bool UseModelMaxCtx { get; set; }
+        public int NumCtx { get; set; } = LlmContextConfig.DefaultReportedCtxCap;
 
         public static string DefaultPath()
         {
@@ -61,6 +63,14 @@ namespace EaGpt
                 {
                     settings.KnowledgeMaxChars = kc;
                 }
+                else if (key.Equals("UseModelMaxCtx", StringComparison.OrdinalIgnoreCase))
+                {
+                    settings.UseModelMaxCtx = value.Equals("true", StringComparison.OrdinalIgnoreCase) || value == "1";
+                }
+                else if (key.Equals("NumCtx", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int ctx))
+                {
+                    settings.NumCtx = LlmContextConfig.ClampNumCtx(ctx);
+                }
             }
 
             return settings;
@@ -85,6 +95,8 @@ namespace EaGpt
             {
                 KnowledgeMaxChars = 40_000;
             }
+
+            NumCtx = LlmContextConfig.ClampNumCtx(NumCtx);
             string file = path ?? DefaultPath();
             string dir = Path.GetDirectoryName(file) ?? "";
             if (dir.Length > 0)
@@ -97,7 +109,9 @@ namespace EaGpt
                 "Model=" + Model + Environment.NewLine +
                 "TimeoutMs=" + TimeoutMs + Environment.NewLine +
                 "KnowledgeFolder=" + KnowledgeFolder + Environment.NewLine +
-                "KnowledgeMaxChars=" + KnowledgeMaxChars + Environment.NewLine);
+                "KnowledgeMaxChars=" + KnowledgeMaxChars + Environment.NewLine +
+                "UseModelMaxCtx=" + (UseModelMaxCtx ? "true" : "false") + Environment.NewLine +
+                "NumCtx=" + NumCtx + Environment.NewLine);
         }
     }
 }

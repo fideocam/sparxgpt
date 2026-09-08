@@ -42,5 +42,28 @@ namespace EaGpt.Tests
             Assert.DoesNotContain("evil", id);
             Assert.DoesNotContain("DROP", id);
         }
+
+        [Fact]
+        public void TryNormalizeLookupId_AcceptsHyphenatedUuid()
+        {
+            Assert.Equal("id-a1b2c3d4e5f67890abcdef1234567890",
+                IdHelper.TryNormalizeLookupId("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
+        }
+
+        [Fact]
+        public void TryNormalizeLookupId_LeavesArchiId()
+        {
+            const string id = "id-a1b2c3d4e5f67890abcdef1234567890";
+            Assert.Equal(id, IdHelper.TryNormalizeLookupId(id));
+        }
+
+        [Fact]
+        public void TryNormalizeLookupId_IgnoresNames()
+        {
+            Assert.Null(IdHelper.TryNormalizeLookupId("Customer"));
+            Assert.Null(IdHelper.TryNormalizeLookupId(""));
+            Assert.Null(IdHelper.TryNormalizeLookupId(null));
+            Assert.Null(IdHelper.TryNormalizeLookupId("http://evil.example/;DROP"));
+        }
     }
 }

@@ -256,8 +256,10 @@ namespace EaGpt
 
                 string candidate = s.Substring(i, end - i + 1);
                 if (candidate.Contains("\"elements\"") || candidate.Contains("\"diagram\"") ||
-                    candidate.Contains("\"removeElementIds\"") || candidate.Contains("\"removeDiagramNames\"") ||
-                    candidate.Contains("\"removeElementFromDiagramIds\""))
+                    candidate.Contains("\"removeElementIds\"") || candidate.Contains("\"removeRelationshipIds\"") ||
+                    candidate.Contains("\"removeDiagramNames\"") ||
+                    candidate.Contains("\"removeElementFromDiagramIds\"") ||
+                    candidate.Contains("\"removeRelationshipFromDiagramIds\""))
                 {
                     return candidate;
                 }

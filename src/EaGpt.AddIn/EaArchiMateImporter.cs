@@ -93,9 +93,20 @@ namespace EaGpt.AddIn
                 }
 
                 string id = IdHelper.EnsureArchiMateId(spec.Id);
-                if (CreateConnector(source, target, relType, spec.Name ?? "", id) != null)
+                if (CreateConnector(source, target, relType, spec.Name ?? "", id) is ComObj created)
                 {
+                    idToElement[id] = created;
+                    if (!string.IsNullOrEmpty(spec.Id))
+                    {
+                        idToElement[spec.Id!.Trim()] = created;
+                    }
+
                     report.RelationshipsAdded++;
+                    ComObj? arrowDiagram = result.Diagram == null ? targetDiagram : null;
+                    if (arrowDiagram != null)
+                    {
+                        EnsureDiagramLink(arrowDiagram, created);
+                    }
                 }
             }
 
@@ -119,6 +130,24 @@ namespace EaGpt.AddIn
                         if (el != null)
                         {
                             PlaceOnDiagram(diagram, el, node.X, node.Y, node.Width, node.Height);
+                        }
+                    }
+
+                    foreach (var spec in result.Relationships)
+                    {
+                        ComObj? conn = Resolve(repository, idToElement, spec.Id);
+                        if (conn != null)
+                        {
+                            EnsureDiagramLink(diagram, conn);
+                        }
+                    }
+
+                    foreach (var link in result.Diagram.Connections)
+                    {
+                        ComObj? conn = Resolve(repository, idToElement, link.RelationshipId);
+                        if (conn != null)
+                        {
+                            EnsureDiagramLink(diagram, conn);
                         }
                     }
 
@@ -172,11 +201,88 @@ namespace EaGpt.AddIn
                 {
                     map[tagged] = el;
                 }
+
+                IndexConnectors(el, map);
             }
 
             foreach (var child in package.Enumerate("Packages"))
             {
                 IndexPackage(repository, child, map);
+            }
+        }
+
+        private static void IndexConnectors(ComObj element, Dictionary<string, ComObj> map)
+        {
+            try
+            {
+                foreach (var c in element.Enumerate("Connectors"))
+                {
+                    string guid = c.Str("ConnectorGUID");
+                    if (!string.IsNullOrEmpty(guid))
+                    {
+                        map[IdHelper.FromEaGuid(guid)] = c;
+                        map[guid] = c;
+                    }
+
+                    string tagged = ReadTaggedValue(c, IdTag);
+                    if (!string.IsNullOrEmpty(tagged))
+                    {
+                        map[tagged] = c;
+                    }
+                }
+            }
+            catch
+            {
+                // Some element types have no connectors collection.
+            }
+        }
+
+        private static void EnsureDiagramLink(ComObj diagram, ComObj connector)
+        {
+            try
+            {
+                int cid = connector.Int("ConnectorID");
+                if (cid <= 0)
+                {
+                    return;
+                }
+
+                foreach (var existing in diagram.Enumerate("DiagramLinks"))
+                {
+                    if (existing.Int("ConnectorID") == cid)
+                    {
+                        return;
+                    }
+                }
+
+                ComObj? links = diagram.Child("DiagramLinks");
+                if (links == null)
+                {
+                    return;
+                }
+
+                object? created = links.Call("AddNew", "", "");
+                if (created == null)
+                {
+                    return;
+                }
+
+                var link = new ComObj(created);
+                link.Set("ConnectorID", cid);
+                link.Call("Update");
+                links.Call("Refresh");
+                try
+                {
+                    diagram.Call("Update");
+                }
+                catch
+                {
+                    // Update is optional once the link exists.
+                }
+            }
+            catch
+            {
+                // EA only draws a link when both ends are already on the diagram.
             }
         }
 
@@ -427,32 +533,80 @@ namespace EaGpt.AddIn
                 return null;
             }
 
-            if (map.TryGetValue(id!.Trim(), out ComObj? found))
+            string trimmed = id!.Trim();
+            if (map.TryGetValue(trimmed, out ComObj? found))
             {
                 return found;
             }
 
-            string archi = IdHelper.EnsureArchiMateId(id);
-            if (map.TryGetValue(archi, out found))
+            string? normalized = IdHelper.TryNormalizeLookupId(trimmed);
+            if (normalized != null)
             {
-                return found;
-            }
-
-            try
-            {
-                string eaGuid = IdHelper.ToEaGuid(id);
-                ComObj? byGuid = repository.CallObj("GetElementByGuid", eaGuid);
-                if (byGuid != null)
+                if (map.TryGetValue(normalized, out found))
                 {
-                    return byGuid;
+                    return found;
+                }
+
+                try
+                {
+                    string eaGuid = IdHelper.ToEaGuid(normalized);
+                    ComObj? byElement = repository.CallObj("GetElementByGuid", eaGuid);
+                    if (byElement != null)
+                    {
+                        return byElement;
+                    }
+
+                    ComObj? byConnector = repository.CallObj("GetConnectorByGuid", eaGuid);
+                    if (byConnector != null)
+                    {
+                        return byConnector;
+                    }
+                }
+                catch
+                {
+                    // Fall through to unique-name lookup.
                 }
             }
-            catch
+
+            return FindUniqueByName(map, trimmed);
+        }
+
+        private static ComObj? FindUniqueByName(Dictionary<string, ComObj> map, string name)
+        {
+            ComObj? unique = null;
+            int matches = 0;
+            var seen = new HashSet<object>();
+            foreach (var obj in map.Values)
             {
-                // ignore
+                if (!seen.Add(obj.Target))
+                {
+                    continue;
+                }
+
+                string existing;
+                try
+                {
+                    existing = obj.Str("Name");
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (!string.Equals(existing, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                matches++;
+                unique = obj;
+                if (matches > 1)
+                {
+                    return null;
+                }
             }
 
-            return null;
+            return matches == 1 ? unique : null;
         }
 
         private static ComObj? FindDiagramByName(ComObj repository, string name)
@@ -548,15 +702,27 @@ namespace EaGpt.AddIn
             int n = 0;
             foreach (string id in ids)
             {
+                ComObj? item = Resolve(repository, map, id);
+                if (item == null)
+                {
+                    continue;
+                }
+
                 if (elements)
                 {
-                    ComObj? el = Resolve(repository, map, id);
-                    if (el == null)
+                    try
                     {
-                        continue;
+                        foreach (var c in item.Enumerate("Connectors"))
+                        {
+                            n += DeleteDiagramLinksMatching(diagram, c.Int("ConnectorID"));
+                        }
+                    }
+                    catch
+                    {
+                        // continue with the figure itself
                     }
 
-                    int eid = el.Int("ElementID");
+                    int eid = item.Int("ElementID");
                     ComObj? objects = diagram.Child("DiagramObjects");
                     if (objects == null)
                     {
@@ -568,8 +734,8 @@ namespace EaGpt.AddIn
                     {
                         try
                         {
-                            object? item = objects.Call("GetAt", (short)i);
-                            if (item != null && new ComObj(item).Int("ElementID") == eid)
+                            object? dobj = objects.Call("GetAt", (short)i);
+                            if (dobj != null && new ComObj(dobj).Int("ElementID") == eid)
                             {
                                 if (diagram.TryDeleteAt("DiagramObjects", i))
                                 {
@@ -583,6 +749,10 @@ namespace EaGpt.AddIn
                         }
                     }
                 }
+                else
+                {
+                    n += DeleteDiagramLinksMatching(diagram, item.Int("ConnectorID"));
+                }
             }
 
             try
@@ -592,6 +762,43 @@ namespace EaGpt.AddIn
             catch
             {
                 // optional
+            }
+
+            return n;
+        }
+
+        private static int DeleteDiagramLinksMatching(ComObj diagram, int connectorId)
+        {
+            if (connectorId <= 0)
+            {
+                return 0;
+            }
+
+            ComObj? links = diagram.Child("DiagramLinks");
+            if (links == null)
+            {
+                return 0;
+            }
+
+            int n = 0;
+            int count = links.Int("Count");
+            for (int i = count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    object? item = links.Call("GetAt", (short)i);
+                    if (item != null && new ComObj(item).Int("ConnectorID") == connectorId)
+                    {
+                        if (diagram.TryDeleteAt("DiagramLinks", i))
+                        {
+                            n++;
+                        }
+                    }
+                }
+                catch
+                {
+                    // continue
+                }
             }
 
             return n;
@@ -612,6 +819,7 @@ namespace EaGpt.AddIn
                 {
                     if (elements)
                     {
+                        DeleteAttachedConnectors(item);
                         int pkgId = item.Int("PackageID");
                         ComObj? pkg = repository.CallObj("GetPackageByID", pkgId);
                         if (pkg != null && DeleteCollectionItem(pkg, "Elements", "ElementID", item.Int("ElementID")))
@@ -636,6 +844,28 @@ namespace EaGpt.AddIn
             }
 
             return n;
+        }
+
+        private static void DeleteAttachedConnectors(ComObj element)
+        {
+            try
+            {
+                ComObj? connectors = element.Child("Connectors");
+                if (connectors == null)
+                {
+                    return;
+                }
+
+                int count = connectors.Int("Count");
+                for (int i = count - 1; i >= 0; i--)
+                {
+                    element.TryDeleteAt("Connectors", i);
+                }
+            }
+            catch
+            {
+                // EA may refuse some connector types; element delete can still proceed.
+            }
         }
 
         private static bool DeleteCollectionItem(ComObj owner, string collection, string idProperty, int id)

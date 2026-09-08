@@ -73,9 +73,9 @@ namespace EaGpt
                 return 3000;
             }
 
-            if (timeoutMs > 600000)
+            if (timeoutMs > LlmContextConfig.TimeoutCeilingMs)
             {
-                return 600000;
+                return LlmContextConfig.TimeoutCeilingMs;
             }
 
             return timeoutMs;
@@ -150,6 +150,21 @@ namespace EaGpt
             return ollama;
         }
 
+        /// <summary>
+        /// POST /api/show context_length / num_ctx. 0 if the server is not Ollama or the field is missing.
+        /// </summary>
+        public int FetchShowContextTokens()
+        {
+            DetectApi();
+            if (_apiKind != LlmApiKind.Ollama)
+            {
+                return 0;
+            }
+
+            string body = PostJson(_baseUrl + "/api/show", "{\"name\":\"" + JsonUtil.Escape(_model) + "\"}", 10000);
+            return OllamaJson.ParseShowContextTokens(body);
+        }
+
         public string Chat(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
             return Chat(systemPrompt, userPrompt, null, cancellationToken, null);
@@ -167,10 +182,21 @@ namespace EaGpt
             CancellationToken cancellationToken,
             IList<ChatTurn>? history)
         {
+            return Chat(systemPrompt, userPrompt, onDelta, cancellationToken, history, numCtx: 0);
+        }
+
+        public string Chat(
+            string systemPrompt,
+            string userPrompt,
+            Action<string>? onDelta,
+            CancellationToken cancellationToken,
+            IList<ChatTurn>? history,
+            int numCtx)
+        {
             DetectApi();
             bool openAi = _apiKind == LlmApiKind.OpenAiCompat;
             string path = openAi ? "/v1/chat/completions" : "/api/chat";
-            string requestBody = BuildChatRequestJson(_model, systemPrompt, userPrompt, stream: onDelta != null, history);
+            string requestBody = BuildChatRequestJson(_model, systemPrompt, userPrompt, stream: onDelta != null, history, openAi ? 0 : numCtx);
             var request = CreateRequest(_baseUrl + path, "POST", _timeoutMs);
             request.ContentType = "application/json";
             cancellationToken.ThrowIfCancellationRequested();
@@ -305,8 +331,23 @@ namespace EaGpt
             bool stream,
             IList<ChatTurn>? history)
         {
+            return BuildChatRequestJson(model, systemPrompt, userPrompt, stream, history, 0);
+        }
+
+        public static string BuildChatRequestJson(
+            string model,
+            string systemPrompt,
+            string userPrompt,
+            bool stream,
+            IList<ChatTurn>? history,
+            int numCtx)
+        {
             var sb = new StringBuilder();
             sb.Append("{\"model\":\"").Append(JsonUtil.Escape(model)).Append("\",\"stream\":").Append(stream ? "true" : "false");
+            if (numCtx >= LlmContextConfig.MinNumCtx)
+            {
+                sb.Append(",\"options\":{\"num_ctx\":").Append(numCtx).Append("}");
+            }
             sb.Append(",\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":\"").Append(JsonUtil.Escape(systemPrompt)).Append("\"}");
             if (history != null)
@@ -334,6 +375,25 @@ namespace EaGpt
         private static string Get(string url, int timeoutMs)
         {
             var request = CreateRequest(url, "GET", timeoutMs);
+            using var response = (HttpWebResponse)request.GetResponse();
+            using var stream = response.GetResponseStream();
+            using var reader = stream != null ? new StreamReader(stream, Encoding.UTF8) : null;
+            string body = reader != null ? reader.ReadToEnd() : "";
+            ThrowIfHttpError(response, body);
+            return body;
+        }
+
+        private static string PostJson(string url, string json, int timeoutMs)
+        {
+            var request = CreateRequest(url, "POST", timeoutMs);
+            request.ContentType = "application/json";
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            request.ContentLength = bytes.Length;
+            using (Stream os = request.GetRequestStream())
+            {
+                os.Write(bytes, 0, bytes.Length);
+            }
+
             using var response = (HttpWebResponse)request.GetResponse();
             using var stream = response.GetResponseStream();
             using var reader = stream != null ? new StreamReader(stream, Encoding.UTF8) : null;
@@ -389,6 +449,63 @@ namespace EaGpt
             }
 
             return names;
+        }
+
+        /// <summary>
+        /// Best-effort context length from Ollama /api/show JSON (context_length or num_ctx).
+        /// </summary>
+        public static int ParseShowContextTokens(string? json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return 0;
+            }
+
+            int best = 0;
+            best = Math.Max(best, MaxIntAfterKey(json!, "context_length"));
+            best = Math.Max(best, MaxIntAfterKey(json!, "num_ctx"));
+            return best;
+        }
+
+        private static int MaxIntAfterKey(string json, string key)
+        {
+            int best = 0;
+            int idx = 0;
+            while (true)
+            {
+                int keyAt = json.IndexOf(key, idx, StringComparison.Ordinal);
+                if (keyAt < 0)
+                {
+                    break;
+                }
+
+                int colon = json.IndexOf(':', keyAt + key.Length);
+                if (colon < 0)
+                {
+                    break;
+                }
+
+                int i = colon + 1;
+                while (i < json.Length && (json[i] == ' ' || json[i] == '\t' || json[i] == '"'))
+                {
+                    i++;
+                }
+
+                int start = i;
+                while (i < json.Length && char.IsDigit(json[i]))
+                {
+                    i++;
+                }
+
+                if (i > start && int.TryParse(json.Substring(start, i - start), out int n) && n > best)
+                {
+                    best = n;
+                }
+
+                idx = keyAt + key.Length;
+            }
+
+            return best;
         }
 
         public static string ExtractMessageContent(string json)

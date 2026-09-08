@@ -32,6 +32,32 @@ namespace EaGpt
             return "id-" + Guid.NewGuid().ToString("N");
         }
 
+        /// <summary>
+        /// Normalize an identifier for lookup. Returns null when <paramref name="id"/> is not an Archi/EA id,
+        /// so callers can fall back to name search instead of inventing a random id.
+        /// </summary>
+        public static string? TryNormalizeLookupId(string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            string trimmed = id!.Trim();
+            if (ArchiMateId.IsMatch(trimmed))
+            {
+                return trimmed;
+            }
+
+            string hex = StripToHex(trimmed);
+            if (hex.Length == 32 && Hex32.IsMatch(hex))
+            {
+                return "id-" + hex.ToLowerInvariant();
+            }
+
+            return null;
+        }
+
         public static bool IsArchiMateId(string? id)
         {
             return !string.IsNullOrEmpty(id) && ArchiMateId.IsMatch(id!.Trim());

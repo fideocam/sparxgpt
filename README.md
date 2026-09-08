@@ -10,6 +10,7 @@ Similar commercial/official EA products already exist (OneRAI, Sparx Japan MCP, 
 
 - Ask for analysis of the model, a diagram, or a selected element (including a deterministic **impact** walk, **quality audit**, **search hits**, and a compact **Mermaid** neighborhood)
 - Follow up in the same chat (last few turns are sent; **Clear chat** resets)
+- Choose an Ollama **context size** on the Server tab (`num_ctx`; optional “Use model max” from `/api/show`)
 - Add ArchiMate elements and relationships (illegal relationship types are rejected with suggestions)
 - Create a new diagram; collapsed LLM coordinates are spread by ArchiMate layer
 - Remove from the current diagram only, or from the model
